@@ -158,9 +158,9 @@ function App() {
 
         <div className="user-profile-summary">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifySpace: 'center', fontWeight: 'bold' }}>A</div>
+            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>J</div>
             <div>
-              <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>Alex R.</div>
+              <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>José Sepúlveda</div>
               <span className="role-badge" style={{ marginTop: '0.1rem', display: 'inline-block' }}>{userRole}</span>
             </div>
           </div>
@@ -192,7 +192,7 @@ function App() {
         {activeTab === 'dashboard' && (
           <div>
             <header className="header">
-              <h1>Welcome back, Alex!</h1>
+              <h1>Welcome back, José!</h1>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Próxima Partida: 18:30 BST</span>
             </header>
 
