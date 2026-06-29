@@ -122,7 +122,7 @@ jobs:
           echo "Desplegando a $PUBLISH_URL usando Zip Deploy API..."
           curl -X POST \
             -u "$USER_NAME:$USER_PWD" \
-            --headers "Content-Type: application/zip" \
+            -H "Content-Type: application/zip" \
             --data-binary @deploy.zip \
             "https://$PUBLISH_URL/api/zipdeploy"
 
