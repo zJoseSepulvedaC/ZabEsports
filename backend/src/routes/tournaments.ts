@@ -85,7 +85,7 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 router.patch(
   '/:id/approve',
   authMiddleware,
-  requireRole('admin'),
+  requireRole('moderador', 'admin'),
   async (req: AuthRequest, res: Response): Promise<void> => {
     try {
       const result = await query(
