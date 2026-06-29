@@ -462,6 +462,12 @@ function App() {
                 <label style={{ marginRight: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Rango:</label>
                 <select className="select-filter" value={selectedRank} onChange={(e) => setSelectedRank(e.target.value)}>
                   <option value="ALL">All Ranks</option>
+                  <option value="Iron">Iron</option>
+                  <option value="Bronze">Bronze</option>
+                  <option value="Silver">Silver</option>
+                  <option value="Gold">Gold</option>
+                  <option value="Platinum">Platinum</option>
+                  <option value="Emerald">Emerald</option>
                   <option value="Diamond">Diamond</option>
                   <option value="Master">Master</option>
                   <option value="Grandmaster">Grandmaster</option>
