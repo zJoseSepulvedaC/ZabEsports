@@ -1,16 +1,13 @@
 -- ============================================================
 -- ZabEsports - Esquema de Base de Datos Completo
--- Versión: Semana 6 | Grupo 10
+-- Versión: Semana 6 | Grupo 10 (Compatible con Azure Cloud)
 -- ============================================================
-
--- Extensiones
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================
 -- TABLA: users
 -- ============================================================
 CREATE TABLE IF NOT EXISTS users (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username    VARCHAR(50)  UNIQUE NOT NULL,
     email       VARCHAR(255) UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
@@ -28,7 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 -- TABLA: communities
 -- ============================================================
 CREATE TABLE IF NOT EXISTS communities (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name        VARCHAR(150) UNIQUE NOT NULL,
     description TEXT,
     owner_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -44,8 +41,8 @@ CREATE INDEX IF NOT EXISTS idx_communities_owner ON communities(owner_id);
 -- TABLA: community_members  (many-to-many: users <-> communities)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS community_members (
-    community_id UUID NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
-    user_id      UUID NOT NULL REFERENCES users(id)       ON DELETE CASCADE,
+    community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
+    user_id      UUID REFERENCES users(id) ON DELETE CASCADE,
     joined_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     PRIMARY KEY (community_id, user_id)
 );
@@ -54,37 +51,34 @@ CREATE TABLE IF NOT EXISTS community_members (
 -- TABLA: tournaments
 -- ============================================================
 CREATE TABLE IF NOT EXISTS tournaments (
-    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name         VARCHAR(200) NOT NULL,
     description  TEXT,
-    community_id UUID REFERENCES communities(id) ON DELETE SET NULL,
+    community_id UUID NOT NULL REFERENCES communities(id) ON DELETE CASCADE,
     organizer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    game         VARCHAR(100),
-    start_date   DATE NOT NULL,
-    end_date     DATE,
-    max_teams    INTEGER NOT NULL DEFAULT 16 CHECK (max_teams > 0),
-    status       VARCHAR(20) NOT NULL DEFAULT 'OPEN'
-                   CHECK (status IN ('OPEN', 'IN_PROGRESS', 'FINISHED', 'CANCELLED')),
-    is_approved  BOOLEAN NOT NULL DEFAULT FALSE,
+    max_teams    INT NOT NULL DEFAULT 16,
+    registered_teams INT NOT NULL DEFAULT 0,
     prize_pool   VARCHAR(100),
+    status       VARCHAR(20) NOT NULL DEFAULT 'OPEN'
+                   CHECK (status IN ('OPEN', 'ONGOING', 'FINISHED')),
+    is_approved  BOOLEAN NOT NULL DEFAULT FALSE,
+    start_date   TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_tournaments_organizer  ON tournaments(organizer_id);
-CREATE INDEX IF NOT EXISTS idx_tournaments_status     ON tournaments(status);
-CREATE INDEX IF NOT EXISTS idx_tournaments_start_date ON tournaments(start_date);
+CREATE INDEX IF NOT EXISTS idx_tournaments_community ON tournaments(community_id);
+CREATE INDEX IF NOT EXISTS idx_tournaments_organizer ON tournaments(organizer_id);
 
 -- ============================================================
--- TABLA: tournament_registrations  (many-to-many: users <-> tournaments)
+-- TABLA: tournament_registrations (many-to-many: teams/users <-> tournaments)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS tournament_registrations (
-    id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
-    user_id       UUID NOT NULL REFERENCES users(id)       ON DELETE CASCADE,
-    team_name     VARCHAR(100),
-    registered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE (tournament_id, user_id)
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tournament_id UUID REFERENCES tournaments(id) ON DELETE CASCADE,
+    team_name     VARCHAR(100) NOT NULL,
+    registered_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    registered_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_registrations_tournament ON tournament_registrations(tournament_id);
@@ -93,91 +87,84 @@ CREATE INDEX IF NOT EXISTS idx_registrations_tournament ON tournament_registrati
 -- TABLA: posts
 -- ============================================================
 CREATE TABLE IF NOT EXISTS posts (
-    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     author_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    community_id UUID REFERENCES communities(id)    ON DELETE SET NULL,
+    community_id UUID REFERENCES communities(id) ON DELETE CASCADE,
     title        VARCHAR(200) NOT NULL,
     content      TEXT NOT NULL,
-    likes        INTEGER NOT NULL DEFAULT 0 CHECK (likes >= 0),
-    is_visible   BOOLEAN NOT NULL DEFAULT TRUE,
+    likes        INT NOT NULL DEFAULT 0,
     created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_posts_author    ON posts(author_id);
 CREATE INDEX IF NOT EXISTS idx_posts_community ON posts(community_id);
-CREATE INDEX IF NOT EXISTS idx_posts_created   ON posts(created_at DESC);
 
 -- ============================================================
--- TABLA: interactions  (likes por usuario por post)
+-- TABLA: interactions
 -- ============================================================
 CREATE TABLE IF NOT EXISTS interactions (
-    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    post_id    UUID NOT NULL REFERENCES posts(id)  ON DELETE CASCADE,
-    user_id    UUID NOT NULL REFERENCES users(id)  ON DELETE CASCADE,
-    type       VARCHAR(20) NOT NULL DEFAULT 'like'
-                 CHECK (type IN ('like', 'comment')),
-    content    TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE (post_id, user_id, type)
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_id    UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type       VARCHAR(20) NOT NULL CHECK (type IN ('like', 'comment')),
+    content    TEXT, -- NULL si es solo un 'like'
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_interactions_post ON interactions(post_id);
+CREATE INDEX IF NOT EXISTS idx_interactions_user ON interactions(user_id);
 
 -- ============================================================
 -- TABLA: reports
 -- ============================================================
 CREATE TABLE IF NOT EXISTS reports (
-    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    reporter_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    target_type VARCHAR(20) NOT NULL
-                  CHECK (target_type IN ('post', 'community', 'user', 'tournament')),
-    target_id   UUID NOT NULL,
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    reporter_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    reported_post_id UUID REFERENCES posts(id) ON DELETE CASCADE,
     reason      TEXT NOT NULL,
-    status      VARCHAR(20) NOT NULL DEFAULT 'pending'
-                  CHECK (status IN ('pending', 'resolved', 'dismissed')),
-    created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    resolved_at TIMESTAMP WITH TIME ZONE
+    status      VARCHAR(20) NOT NULL DEFAULT 'PENDIENTE'
+                  CHECK (status IN ('PENDIENTE', 'REVISADO', 'IGNORADO')),
+    created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+CREATE INDEX IF NOT EXISTS idx_reports_post ON reports(reported_post_id);
+
 
 -- ============================================================
--- DATOS SEMILLA (seed data)
+-- DATOS SEMILLA (SEED DATA)
 -- ============================================================
 
--- Usuarios de prueba (passwords son hash de 'password123')
+-- Usuarios (JoseSepulveda es admin, ZabPlayer es moderador, knghtfyre es usuario)
+-- Hash de las contraseñas precalculado con bcrypt (clave: 'password123')
 INSERT INTO users (id, username, email, password_hash, role) VALUES
-  ('a1111111-0000-0000-0000-000000000001', 'JoseSepulveda',  'jose@zabesports.cl',   '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVImJ2zdkq', 'admin'),
-  ('a1111111-0000-0000-0000-000000000002', 'ZabPlayer',      'zab@zabesports.cl',    '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVImJ2zdkq', 'moderador'),
-  ('a1111111-0000-0000-0000-000000000003', 'knghtfyre',      'knghtfyre@correo.com', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVImJ2zdkq', 'usuario'),
-  ('a1111111-0000-0000-0000-000000000004', 'GamerGirl99',    'gamer@correo.com',     '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVImJ2zdkq', 'usuario')
-ON CONFLICT (email) DO NOTHING;
+('a1111111-0000-0000-0000-000000000001', 'JoseSepulveda', 'jose@zabesports.cl', '$2b$10$7z9Zt2TFbtcielc6lwp3zeZamUqlv5Rb.mucU4Fn06Dz6ifEeMRYm', 'admin'),
+('a1111111-0000-0000-0000-000000000002', 'ZabPlayer', 'zab@zabesports.cl', '$2b$10$7z9Zt2TFbtcielc6lwp3zeZamUqlv5Rb.mucU4Fn06Dz6ifEeMRYm', 'moderador'),
+('a1111111-0000-0000-0000-000000000003', 'knghtfyre', 'knghtfyre@correo.com', '$2b$10$7z9Zt2TFbtcielc6lwp3zeZamUqlv5Rb.mucU4Fn06Dz6ifEeMRYm', 'usuario')
+ON CONFLICT (id) DO NOTHING;
 
 -- Comunidades
 INSERT INTO communities (id, name, description, owner_id, is_approved, game) VALUES
-  ('b2222222-0000-0000-0000-000000000001', 'The Gladiators Clan',      'Comunidad principal de reclutamiento y torneos.', 'a1111111-0000-0000-0000-000000000001', TRUE,  'League of Legends'),
-  ('b2222222-0000-0000-0000-000000000002', 'FNatic Fan Club',           'Club oficial de fanáticos de FNatic en Latinoamérica.', 'a1111111-0000-0000-0000-000000000002', TRUE, 'Valorant'),
-  ('b2222222-0000-0000-0000-000000000003', 'Apex Legends Competitive', 'Comunidad para coordinar escuadras competitivas de Apex.', 'a1111111-0000-0000-0000-000000000004', FALSE, 'Apex Legends')
-ON CONFLICT (name) DO NOTHING;
+('b2222222-0000-0000-0000-000000000001', 'The Gladiators Clan', 'Comunidad competitiva de League of Legends en Chile', 'a1111111-0000-0000-0000-000000000001', true, 'League of Legends'),
+('b2222222-0000-0000-0000-000000000002', 'FNatic Fan Club LATAM', 'Espacio de encuentro para fans de FNATIC en Sudamérica', 'a1111111-0000-0000-0000-000000000002', true, 'Valorant'),
+('b2222222-0000-0000-0000-000000000003', 'Apex Competitive Chile', 'Torneos locales y scrims de Apex Legends', 'a1111111-0000-0000-0000-000000000003', false, 'Apex Legends')
+ON CONFLICT (id) DO NOTHING;
 
--- Miembros de comunidades
+-- Miembros de Comunidades
 INSERT INTO community_members (community_id, user_id) VALUES
-  ('b2222222-0000-0000-0000-000000000001', 'a1111111-0000-0000-0000-000000000001'),
-  ('b2222222-0000-0000-0000-000000000001', 'a1111111-0000-0000-0000-000000000003'),
-  ('b2222222-0000-0000-0000-000000000002', 'a1111111-0000-0000-0000-000000000002'),
-  ('b2222222-0000-0000-0000-000000000003', 'a1111111-0000-0000-0000-000000000004')
+('b2222222-0000-0000-0000-000000000001', 'a1111111-0000-0000-0000-000000000001'),
+('b2222222-0000-0000-0000-000000000001', 'a1111111-0000-0000-0000-000000000002'),
+('b2222222-0000-0000-0000-000000000002', 'a1111111-0000-0000-0000-000000000002')
 ON CONFLICT DO NOTHING;
 
 -- Torneos
-INSERT INTO tournaments (id, name, description, community_id, organizer_id, game, start_date, max_teams, status, is_approved, prize_pool) VALUES
-  ('c3333333-0000-0000-0000-000000000001', 'VCT: Masters Madrid - Grand Final', 'Evento final presencial retransmitido. 5v5 oficial.', 'b2222222-0000-0000-0000-000000000002', 'a1111111-0000-0000-0000-000000000002', 'Valorant', '2026-07-10', 16, 'OPEN', TRUE,  '2000 USD en skins'),
-  ('c3333333-0000-0000-0000-000000000002', 'FNatic Qualifier: Semi-Finals',      'Clasificatorias para representar al club FNatic.', 'b2222222-0000-0000-0000-000000000002',  'a1111111-0000-0000-0000-000000000002', 'Valorant', '2026-06-28', 8,  'OPEN', TRUE,  NULL),
-  ('c3333333-0000-0000-0000-000000000003', 'Apex Legends Global Series (ALGS)',  'Torneo clasificatorio amateur de Apex Legends.', 'b2222222-0000-0000-0000-000000000003',   'a1111111-0000-0000-0000-000000000004', 'Apex Legends', '2026-07-20', 20, 'OPEN', FALSE, NULL)
-ON CONFLICT DO NOTHING;
+INSERT INTO tournaments (id, name, description, community_id, organizer_id, max_teams, registered_teams, prize_pool, status, is_approved, start_date) VALUES
+('c3333333-0000-0000-0000-000000000001', 'Copa de las Comunidades LoL 2026', 'Torneo amateur 5v5 en la Grieta del Invocador', 'b2222222-0000-0000-0000-000000000001', 'a1111111-0000-0000-0000-000000000001', 16, 4, 'USD 100 y Skin de Campeón', 'OPEN', true, NOW() + INTERVAL '5 days'),
+('c3333333-0000-0000-0000-000000000002', 'Valorant Open Challenge', 'Demuestra quién tiene el mejor aim en Santiago', 'b2222222-0000-0000-0000-000000000002', 'a1111111-0000-0000-0000-000000000002', 8, 2, 'Periféricos Gamer', 'OPEN', false, NOW() + INTERVAL '10 days')
+ON CONFLICT (id) DO NOTHING;
 
--- Posts
+-- Publicaciones
 INSERT INTO posts (id, author_id, community_id, title, content, likes) VALUES
-  ('d4444444-0000-0000-0000-000000000001', 'a1111111-0000-0000-0000-000000000001', 'b2222222-0000-0000-0000-000000000001', 'VCT: Masters Madrid - Grand Final', '¡Espectacular final este fin de semana! Los esperamos a todos en la sala principal de Discord para la retransmisión oficial.', 142),
-  ('d4444444-0000-0000-0000-000000000002', 'a1111111-0000-0000-0000-000000000003', 'b2222222-0000-0000-0000-000000000003', 'Buscamos Mid Laner suplente para ALGS', 'De preferencia rango Diamante o superior para completar la alineación titular. Buena comunicación por Discord.', 28)
-ON CONFLICT DO NOTHING;
+('d4444444-0000-0000-0000-000000000001', 'a1111111-0000-0000-0000-000000000001', 'b2222222-0000-0000-0000-000000000001', '¡Bienvenidos al lanzamiento de ZabEsports!', 'Este portal es el nuevo hogar para las escuadras de esports y las comunidades que buscan organizar torneos y reclutar talentos.', 12),
+('d4444444-0000-0000-0000-000000000002', 'a1111111-0000-0000-0000-000000000002', 'b2222222-0000-0000-0000-000000000002', 'Buscamos Main Support Challenger para torneo presencial', 'Nuestra escuadra requiere un jugador comprometido con horarios de entrenamiento nocturnos. Dejen sus stats en comentarios.', 8)
+ON CONFLICT (id) DO NOTHING;
