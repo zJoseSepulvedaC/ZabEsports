@@ -32,7 +32,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Instalar dependencias
-        run: npm ci
+        run: npm install
 
       - name: Ejecutar tests unitarios (Jest)
         run: npm test
@@ -63,7 +63,7 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Instalar dependencias del frontend
-        run: npm ci
+        run: npm install
         working-directory: ./frontend
 
       - name: Build del frontend (Vite)
@@ -104,7 +104,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Instalar dependencias
-        run: npm ci
+        run: npm install
 
       - name: Build TypeScript
         run: npm run build
