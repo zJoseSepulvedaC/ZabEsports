@@ -4,7 +4,7 @@ import http from 'https';
 
 const router = Router();
 
-const RIOT_API_KEY = 'RGAPI-1d28140d-dded-4f51-b64a-053b2111e6ad';
+const RIOT_API_KEY = process.env.RIOT_API_KEY;
 
 // Colección de iconos iniciales sencillos que todo el mundo tiene en LoL
 const VERIFICATION_ICONS = [
