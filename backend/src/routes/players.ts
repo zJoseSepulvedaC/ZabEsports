@@ -6,13 +6,12 @@ const router = Router();
 
 const RIOT_API_KEY = process.env.RIOT_API_KEY;
 
-// Colección de iconos iniciales sencillos que todo el mundo tiene en LoL
+// Colección de iconos iniciales con sus IDs de Riot reales verificados
 const VERIFICATION_ICONS = [
-  { id: 29,  name: 'Espada de Iniciado' },
-  { id: 1,   name: 'Invocador Clásico Azul' },
-  { id: 2,   name: 'Invocador Clásico Verde' },
-  { id: 3,   name: 'Invocador Clásico Rojo' },
-  { id: 4,   name: 'Invocador Clásico Amarillo' }
+  { id: 0,   name: 'Iniciador Espadas Cruzadas' },
+  { id: 7,   name: 'Rosa Roja Clásica' },
+  { id: 15,  name: 'Invocador Clásico Verde (Pócima)' },
+  { id: 11,  name: 'Invocador Clásico Rojo (Zarpazo)' }
 ];
 
 // Helper para hacer llamadas HTTP a la API de Riot Games
