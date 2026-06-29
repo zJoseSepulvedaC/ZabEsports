@@ -109,7 +109,12 @@ router.patch(
 
 // POST /api/tournaments/:id/register — Inscribirse a un torneo
 router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { team_name } = req.body;
+  const { team_id } = req.body;
+
+  if (!team_id) {
+    res.status(400).json({ error: 'Debes seleccionar una Escuadra para inscribirte.' });
+    return;
+  }
 
   try {
     // Verificar que el torneo exista y esté aprobado
@@ -145,9 +150,9 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
     }
 
     const result = await query(
-      `INSERT INTO tournament_registrations (tournament_id, user_id, team_name)
-       VALUES ($1, $2, $3) RETURNING id, team_name, registered_at`,
-      [req.params.id, req.user!.id, team_name || null]
+      `INSERT INTO tournament_registrations (tournament_id, user_id, team_id)
+       VALUES ($1, $2, $3) RETURNING id, team_id, registered_at`,
+      [req.params.id, req.user!.id, team_id]
     );
 
     res.status(201).json({ message: 'Inscripción exitosa.', registration: result.rows[0] });

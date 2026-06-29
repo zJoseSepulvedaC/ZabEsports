@@ -9,6 +9,7 @@ import communitiesRouter from './routes/communities';
 import tournamentsRouter from './routes/tournaments';
 import postsRouter       from './routes/posts';
 import playersRouter     from './routes/players';
+import teamsRouter       from './routes/teams';
 
 dotenv.config();
 
@@ -29,6 +30,7 @@ app.use('/api/communities', communitiesRouter);
 app.use('/api/tournaments', tournamentsRouter);
 app.use('/api/posts',       postsRouter);
 app.use('/api/players',     playersRouter);
+app.use('/api/teams',       teamsRouter);
 
 // Endpoint de salud — verifica también la conexión a la DB
 app.get('/api/health', async (req: Request, res: Response) => {

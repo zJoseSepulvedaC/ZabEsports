@@ -87,7 +87,26 @@ const translations = {
     win: "Victoria",
     loss: "Derrota",
     doubleKill: "Asesinato Doble",
-    carry: "Carrileo"
+    carry: "Carrileo",
+    notifTitle: "Invitaciones de Reclutamiento",
+    notifEmpty: "No tienes invitaciones pendientes.",
+    notifReceived: "te invita a unirte a su escuadra para el torneo:",
+    notifAccept: "Aceptar",
+    notifDecline: "Rechazar",
+    recruitModalTitle: "Enviar Solicitud de Reclutamiento",
+    recruitSelectTeam: "Selecciona tu Escuadra",
+    recruitMessagePlaceholder: "¡Hola! Queremos que seas parte de nuestra escuadra...",
+    recruitSend: "Enviar Invitación",
+    rank_iron: "Hierro",
+    rank_bronze: "Bronce",
+    rank_silver: "Plata",
+    rank_gold: "Oro",
+    rank_platinum: "Platino",
+    rank_emerald: "Esmeralda",
+    rank_diamond: "Diamante",
+    rank_master: "Maestro",
+    rank_grandmaster: "Grand Maestro",
+    rank_challenger: "Retador"
   },
   en: {
     welcome: "Welcome back",
@@ -171,7 +190,26 @@ const translations = {
     win: "Victory",
     loss: "Defeat",
     doubleKill: "Double Kill",
-    carry: "Carry"
+    carry: "Carry",
+    notifTitle: "Recruitment Invitations",
+    notifEmpty: "No pending invitations.",
+    notifReceived: "invites you to join their squad for the tournament:",
+    notifAccept: "Accept",
+    notifDecline: "Decline",
+    recruitModalTitle: "Send Recruitment Request",
+    recruitSelectTeam: "Select your Squad",
+    recruitMessagePlaceholder: "Hey! We want you to be part of our squad...",
+    recruitSend: "Send Invitation",
+    rank_iron: "Iron",
+    rank_bronze: "Bronze",
+    rank_silver: "Silver",
+    rank_gold: "Gold",
+    rank_platinum: "Platinum",
+    rank_emerald: "Emerald",
+    rank_diamond: "Diamond",
+    rank_master: "Master",
+    rank_grandmaster: "Grand Master",
+    rank_challenger: "Challenger"
   }
 };
 
@@ -248,6 +286,34 @@ function App() {
   const [linkInfo, setLinkInfo] = useState(null);
   const [linkError, setLinkError] = useState('');
 
+  // Notificaciones & Reclutamiento
+  const [invitations, setInvitations] = useState([]);
+  const [myTeams, setMyTeams] = useState([]);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false);
+  
+  const [showRecruitModal, setShowRecruitModal] = useState(false);
+  const [recruitingPlayer, setRecruitingPlayer] = useState(null);
+  const [recruitTeamId, setRecruitTeamId] = useState('');
+  const [recruitMessage, setRecruitMessage] = useState('');
+  
+  const [registeringTourney, setRegisteringTourney] = useState(null);
+  const [registeringTeamId, setRegisteringTeamId] = useState('');
+
+  const [editingPost, setEditingPost] = useState(null);
+  const [editPostTitle, setEditPostTitle] = useState('');
+  const [editPostContent, setEditPostContent] = useState('');
+
+  const fetchInvitations = () => {
+    if (!token) return;
+    fetch(`${API_URL}/api/players/invitations`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => setInvitations(Array.isArray(data) ? data : []))
+      .catch(() => setInvitations([]));
+  };
+
   const fetchPlayers = () => {
     fetch(`${API_URL}/api/players`)
       .then(r => r.json())
@@ -282,13 +348,25 @@ function App() {
       .finally(() => setLoadingPosts(false));
   };
 
+  const fetchMyTeams = () => {
+    if (!token) return;
+    fetch(`${API_URL}/api/teams/mine`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(r => r.json())
+      .then(data => setMyTeams(Array.isArray(data) ? data : []))
+      .catch(() => setMyTeams([]));
+  };
+
   useEffect(() => {
     if (!isLoggedIn) return;
     fetchCommunities();
     fetchTournaments();
     fetchPosts();
     fetchPlayers();
-  }, [isLoggedIn]);
+    fetchInvitations();
+    fetchMyTeams();
+  }, [isLoggedIn, token]);
 
   // ============================================================
   // Acciones de Creación (CRUD)
@@ -349,6 +427,168 @@ function App() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleCreateTeam = async (e) => {
+    e.preventDefault();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/teams`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name: newTeamName })
+      });
+      if (res.ok) {
+        setNewTeamName('');
+        fetchMyTeams();
+        alert('¡Equipo creado exitosamente!');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al crear equipo');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleSendRecruit = async (e) => {
+    e.preventDefault();
+    if (!token || !recruitingPlayer) return;
+    try {
+      const res = await fetch(`${API_URL}/api/players/recruit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          receiver_id: recruitingPlayer.id,
+          team_id: recruitTeamId,
+          message: recruitMessage
+        })
+      });
+      if (res.ok) {
+        setShowRecruitModal(false);
+        setRecruitingPlayer(null);
+        setRecruitTeamId('');
+        setRecruitMessage('');
+        alert('¡Invitación de reclutamiento enviada con éxito!');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al enviar invitación.');
+      }
+    } catch (err) {
+      console.error('Error al enviar invitación:', err);
+    }
+  };
+
+  const handleRegisterTournament = async (e) => {
+    e.preventDefault();
+    if (!token || !registeringTourney) return;
+    try {
+      const res = await fetch(`${API_URL}/api/tournaments/${registeringTourney}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ team_id: registeringTeamId })
+      });
+      if (res.ok) {
+        setRegisteringTourney(null);
+        setRegisteringTeamId('');
+        fetchTournaments();
+        alert('¡Inscripción exitosa al torneo!');
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al inscribirse');
+      }
+    } catch (err) {
+      console.error('Error al inscribirse:', err);
+    }
+  };
+
+  const handleAcceptInvitation = async (id) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/players/invitations/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'ACEPTADO' })
+      });
+      if (res.ok) {
+        fetchInvitations();
+        alert('Invitación aceptada. ¡Te has unido al equipo!');
+      }
+    } catch (err) {
+      console.error('Error al aceptar invitación:', err);
+    }
+  };
+
+  const handleDeclineInvitation = async (id) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/players/invitations/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'RECHAZADO' })
+      });
+      if (res.ok) {
+        fetchInvitations();
+      }
+    } catch (err) {
+      console.error('Error al rechazar invitación:', err);
+    }
+  };
+
+  const handleDeletePost = async (id) => {
+    if (!token) return;
+    if (!window.confirm('¿Seguro que deseas eliminar esta publicación?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setPosts(posts.filter(p => p.id !== id));
+      }
+    } catch (err) {
+      console.error('Error al eliminar post:', err);
+    }
+  };
+
+  const handleEditPostSubmit = async (e) => {
+    e.preventDefault();
+    if (!token || !editingPost) return;
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${editingPost.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ title: editPostTitle, content: editPostContent })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPosts(posts.map(p => p.id === editingPost.id ? { ...p, title: data.post.title, content: data.post.content } : p));
+        setEditingPost(null);
+      }
+    } catch (err) {
+      console.error('Error al editar post:', err);
+    }
+  };
+
+  const openEditPost = (post) => {
+    setEditingPost(post);
+    setEditPostTitle(post.title);
+    setEditPostContent(post.content);
   };
 
   const handleLoginSubmit = async (e) => {
@@ -641,9 +881,59 @@ function App() {
 
       {/* CONTENIDO PRINCIPAL */}
       <main className="main-content">
-        {/* Selector de idioma en la parte superior derecha de la aplicación */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-          <select value={lang} onChange={(e) => setLang(e.target.value)} style={{ padding: '0.4rem 0.8rem', background: 'var(--card-bg)', color: 'var(--text-light)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+        {/* Selector de idioma y campana de notificaciones en la barra superior */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1.5rem', marginBottom: '1.5rem', position: 'relative' }}>
+          
+          {/* Campana de Notificaciones */}
+          <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setShowNotifDropdown(!showNotifDropdown)}>
+            <span style={{ fontSize: '1.5rem' }}>🔔</span>
+            {invitations.length > 0 && (
+              <span className="notification-badge" style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: '#fff', fontSize: '0.65rem', fontWeight: 'bold', borderRadius: '50%', padding: '0.15rem 0.35rem', lineHeights: '1' }}>
+                {invitations.length}
+              </span>
+            )}
+            
+            {/* Panel Desplegable (Dropdown) */}
+            {showNotifDropdown && (
+              <div className="notif-dropdown" style={{ position: 'absolute', right: 0, top: '35px', width: '320px', backgroundColor: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: '10px', boxShadow: '0 8px 20px rgba(0,0,0,0.5)', zIndex: 999, padding: '1rem' }} onClick={(e) => e.stopPropagation()}>
+                <h4 style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', color: 'var(--text-light)' }}>
+                  {t.notifTitle}
+                </h4>
+                {invitations.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', textAlign: 'center', padding: '1rem 0' }}>
+                    {t.notifEmpty}
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '250px', overflowY: 'auto' }}>
+                    {invitations.map((inv) => (
+                      <div key={inv.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-light)', lineHeight: '1.3' }}>
+                          <strong style={{ color: 'var(--accent-purple)' }}>@{inv.sender_username}</strong> {t.notifReceived}
+                          <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)', marginTop: '0.2rem' }}>{inv.tournament_name}</div>
+                        </div>
+                        {inv.message && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', background: 'rgba(0,0,0,0.2)', padding: '0.35rem 0.5rem', borderRadius: '4px' }}>
+                            "{inv.message}"
+                          </div>
+                        )}
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                          <button className="btn-small btn-approve" onClick={() => handleAcceptInvitation(inv.id)} style={{ flex: 1, padding: '0.3rem', fontSize: '0.75rem' }}>
+                            {t.notifAccept}
+                          </button>
+                          <button className="btn-small" onClick={() => handleDeclineInvitation(inv.id)} style={{ flex: 1, padding: '0.3rem', fontSize: '0.75rem', backgroundColor: '#374151', color: '#fff', border: 'none' }}>
+                            {t.notifDecline}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Selector de idioma */}
+          <select value={lang} onChange={(e) => setLang(e.target.value)} style={{ padding: '0.4rem 0.8rem', background: 'var(--card-bg)', color: 'var(--text-light)', border: '1px solid var(--border-color)', borderRadius: '6px', cursor: 'pointer' }}>
             <option value="es">🇪🇸 Español</option>
             <option value="en">🇺🇸 English</option>
           </select>
@@ -680,6 +970,12 @@ function App() {
                     <div className="post-actions">
                       <button className="action-btn" onClick={() => handleLike(post.id)}>❤️ Reacciones ({post.likes})</button>
                       <button className="action-btn">💬 Comentar</button>
+                      {post.author_username === currentUser?.username && (
+                        <>
+                          <button className="action-btn" onClick={() => openEditPost(post)}>✏️ Editar</button>
+                          <button className="action-btn" style={{ color: '#ef4444' }} onClick={() => handleDeletePost(post.id)}>🗑️ Eliminar</button>
+                        </>
+                      )}
                     </div>
                   </article>
                 ))}
@@ -756,16 +1052,16 @@ function App() {
                 <label style={{ marginRight: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t.rankLabel}:</label>
                 <select className="select-filter" value={selectedRank} onChange={(e) => setSelectedRank(e.target.value)}>
                   <option value="ALL">{t.allRanks}</option>
-                  <option value="Iron">Iron</option>
-                  <option value="Bronze">Bronze</option>
-                  <option value="Silver">Silver</option>
-                  <option value="Gold">Gold</option>
-                  <option value="Platinum">Platinum</option>
-                  <option value="Emerald">Emerald</option>
-                  <option value="Diamond">Diamond</option>
-                  <option value="Master">Master</option>
-                  <option value="Grandmaster">Grandmaster</option>
-                  <option value="Challenger">Challenger</option>
+                  <option value="Iron">{t.rank_iron}</option>
+                  <option value="Bronze">{t.rank_bronze}</option>
+                  <option value="Silver">{t.rank_silver}</option>
+                  <option value="Gold">{t.rank_gold}</option>
+                  <option value="Platinum">{t.rank_platinum}</option>
+                  <option value="Emerald">{t.rank_emerald}</option>
+                  <option value="Diamond">{t.rank_diamond}</option>
+                  <option value="Master">{t.rank_master}</option>
+                  <option value="Grandmaster">{t.rank_grandmaster}</option>
+                  <option value="Challenger">{t.rank_challenger}</option>
                 </select>
               </div>
             </div>
@@ -797,7 +1093,7 @@ function App() {
                     <div className="stat-item"><span className="stat-label">KDA</span><span className="stat-val">{player.kda}</span></div>
                   </div>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>Availability: {player.availability}</div>
-                  <button className="btn-primary" style={{ width: '100%' }}>{t.recruitBtn}</button>
+                  <button className="btn-primary" style={{ width: '100%' }} onClick={() => { setRecruitingPlayer(player); setShowRecruitModal(true); }}>{t.recruitBtn}</button>
                 </div>
               ))}
               {filteredPlayers.length === 0 && (
@@ -836,8 +1132,8 @@ function App() {
                   </div>
                   <div>
                     {t.is_approved
-                      ? <button className="btn-primary" style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-pink))' }}>{translations[lang].enrollTeam}</button>
-                      : <button className="btn-primary" style={{ opacity: 0.5, cursor: 'not-allowed' }} disabled>{translations[lang].locked}</button>
+                      ? <button onClick={() => setRegisteringTourney(t.id)} className="btn-primary" style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-pink))' }}>Inscribir Escuadra</button>
+                      : <button className="btn-primary" style={{ opacity: 0.5, cursor: 'not-allowed' }} disabled>Bloqueado</button>
                     }
                   </div>
                 </div>
@@ -987,6 +1283,44 @@ function App() {
                 )}
               </div>
             </div>
+
+            {/* MIS ESCUADRAS (TEAMS) */}
+            <div className="card" style={{ padding: '2rem', marginTop: '2rem' }}>
+              <h3 style={{ marginBottom: '1rem' }}>Mis Escuadras</h3>
+              <form onSubmit={handleCreateTeam} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Nombre de la nueva escuadra" 
+                  value={newTeamName} 
+                  onChange={(e) => setNewTeamName(e.target.value)} 
+                  required 
+                  style={{ flex: 1 }}
+                />
+                <button type="submit" className="btn-primary" style={{ whiteSpace: 'nowrap' }}>+ Crear Equipo</button>
+              </form>
+
+              {myTeams.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic' }}>
+                  No tienes escuadras aún. ¡Crea una para empezar a reclutar jugadores!
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+                  {myTeams.map(team => (
+                    <div key={team.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.25rem' }}>
+                      <h4 style={{ color: 'var(--accent-purple)', marginBottom: '0.25rem' }}>{team.name}</h4>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        👥 {team.member_count} {String(team.member_count) === '1' ? 'Miembro' : 'Miembros'}
+                      </p>
+                      {team.captain_id === currentUser?.id && (
+                        <span className="role-badge" style={{ marginTop: '0.5rem', display: 'inline-block', fontSize: '0.7rem' }}>Capitán</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
@@ -1208,6 +1542,116 @@ function App() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE RECLUTAMIENTO */}
+      {showRecruitModal && recruitingPlayer && (
+        <div className="modal-overlay" onClick={() => setShowRecruitModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>{t.recruitModalTitle}</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+              Reclutar a <strong style={{ color: 'var(--accent-purple)' }}>{recruitingPlayer.username}</strong>
+            </p>
+            <form onSubmit={handleSendRecruit}>
+              <div className="input-group">
+                <label>{t.recruitSelectTeam || "Selecciona tu Escuadra"}</label>
+                <select 
+                  className="select-filter" 
+                  style={{ width: '100%', padding: '0.75rem' }} 
+                  required 
+                  value={recruitTeamId} 
+                  onChange={(e) => setRecruitTeamId(e.target.value)}
+                >
+                  <option value="">-- {t.recruitSelectTeam || "Selecciona tu Escuadra"} --</option>
+                  {myTeams.map(team => (
+                    <option key={team.id} value={team.id}>{team.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="input-group" style={{ marginTop: '1rem' }}>
+                <label>{t.descLabel}</label>
+                <textarea 
+                  className="input-field" 
+                  style={{ minHeight: '80px' }} 
+                  placeholder={t.recruitMessagePlaceholder}
+                  value={recruitMessage} 
+                  onChange={(e) => setRecruitMessage(e.target.value)} 
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>{t.recruitSend}</button>
+                <button type="button" className="btn-primary" style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} onClick={() => setShowRecruitModal(false)}>{t.cancelBtn}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL DE INSCRIPCIÓN A TORNEO */}
+      {registeringTourney && (
+        <div className="modal-overlay" onClick={() => setRegisteringTourney(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Inscripción Oficial a Torneo</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+              Selecciona con qué escuadra quieres participar. (Solo las escuadras de las que eres capitán).
+            </p>
+            <form onSubmit={handleRegisterTournament}>
+              <div className="input-group">
+                <label>Tu Escuadra Competitiva</label>
+                <select 
+                  className="select-filter" 
+                  style={{ width: '100%', padding: '0.75rem' }} 
+                  required 
+                  value={registeringTeamId} 
+                  onChange={(e) => setRegisteringTeamId(e.target.value)}
+                >
+                  <option value="">-- Seleccionar Escuadra --</option>
+                  {myTeams.filter(t => t.captain_id === currentUser?.id).map(team => (
+                    <option key={team.id} value={team.id}>{team.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Confirmar Inscripción</button>
+                <button type="button" className="btn-primary" style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} onClick={() => setRegisteringTourney(null)}>{t.cancelBtn}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EDICIÓN DE POST */}
+      {editingPost && (
+        <div className="modal-overlay" onClick={() => setEditingPost(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Editar Publicación</h2>
+            <form onSubmit={handleEditPostSubmit}>
+              <div className="input-group">
+                <label>{t.nameLabel || 'Título'}</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  required 
+                  value={editPostTitle} 
+                  onChange={(e) => setEditPostTitle(e.target.value)}
+                />
+              </div>
+              <div className="input-group" style={{ marginTop: '1rem' }}>
+                <label>{t.descLabel || 'Contenido'}</label>
+                <textarea 
+                  className="input-field" 
+                  style={{ minHeight: '120px' }} 
+                  required 
+                  value={editPostContent} 
+                  onChange={(e) => setEditPostContent(e.target.value)} 
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Guardar Cambios</button>
+                <button type="button" className="btn-primary" style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} onClick={() => setEditingPost(null)}>{t.cancelBtn}</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

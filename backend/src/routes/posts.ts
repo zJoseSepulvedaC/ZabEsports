@@ -102,4 +102,46 @@ router.post('/:id/report', authMiddleware, async (req: AuthRequest, res: Respons
   }
 });
 
+// PUT /api/posts/:id — Editar un post (requiere auth y ser autor)
+router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { title, content } = req.body;
+  if (!title || !content) {
+    res.status(400).json({ error: 'Título y contenido son requeridos.' });
+    return;
+  }
+  try {
+    const result = await query(
+      `UPDATE posts SET title = $1, content = $2, updated_at = NOW()
+       WHERE id = $3 AND author_id = $4 RETURNING id, title, content`,
+      [title, content, req.params.id, req.user!.id]
+    );
+    if (result.rows.length === 0) {
+      res.status(403).json({ error: 'Post no encontrado o no tienes permisos para editarlo.' });
+      return;
+    }
+    res.json({ message: 'Post actualizado con éxito.', post: result.rows[0] });
+  } catch (err) {
+    console.error('Error al actualizar post:', err);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// DELETE /api/posts/:id — Eliminar un post (requiere auth y ser autor)
+router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const result = await query(
+      `DELETE FROM posts WHERE id = $1 AND author_id = $2 RETURNING id`,
+      [req.params.id, req.user!.id]
+    );
+    if (result.rows.length === 0) {
+      res.status(403).json({ error: 'Post no encontrado o no tienes permisos para eliminarlo.' });
+      return;
+    }
+    res.json({ message: 'Post eliminado correctamente.' });
+  } catch (err) {
+    console.error('Error al eliminar post:', err);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
 export default router;

@@ -217,4 +217,107 @@ router.post('/riot-verify', async (req: Request, res: Response): Promise<void> =
   }
 });
 
+// Importar authMiddleware para proteger las rutas de reclutamiento
+import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
+
+// POST /api/players/recruit — Enviar invitación de reclutamiento
+router.post('/recruit', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { receiver_id, team_id, message } = req.body;
+
+  if (!receiver_id || !team_id) {
+    res.status(400).json({ error: 'El ID del receptor y del equipo son requeridos.' });
+    return;
+  }
+
+  try {
+    const result = await query(`
+      INSERT INTO recruitment_invitations (sender_id, receiver_id, team_id, message)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id, sender_id, receiver_id, team_id, message, status, created_at
+    `, [req.user!.id, receiver_id, team_id, message || null]);
+
+    res.status(201).json({
+      message: 'Invitación de reclutamiento enviada exitosamente.',
+      invitation: result.rows[0]
+    });
+  } catch (err) {
+    console.error('Error al enviar reclutamiento:', err);
+    res.status(500).json({ error: 'Error interno al procesar el reclutamiento.' });
+  }
+});
+
+// GET /api/players/invitations — Obtener notificaciones/invitaciones pendientes
+router.get('/invitations', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const result = await query(`
+      SELECT
+        ri.id,
+        ri.team_id,
+        t.name AS team_name,
+        ri.message,
+        ri.status,
+        ri.created_at,
+        u.username AS sender_username
+      FROM recruitment_invitations ri
+      JOIN users u ON u.id = ri.sender_id
+      JOIN teams t ON t.id = ri.team_id
+      WHERE ri.receiver_id = $1 AND ri.status = 'PENDIENTE'
+      ORDER BY ri.created_at DESC
+    `, [req.user!.id]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener invitaciones:', err);
+    res.status(500).json({ error: 'Error al obtener invitaciones de reclutamiento.' });
+  }
+});
+
+// PATCH /api/players/invitations/:id — Aceptar o Rechazar invitación
+router.patch('/invitations/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { status } = req.body; // 'ACEPTADO' o 'RECHAZADO'
+
+  if (!status || !['ACEPTADO', 'RECHAZADO'].includes(status)) {
+    res.status(400).json({ error: 'Estado inválido. Debe ser ACEPTADO o RECHAZADO.' });
+    return;
+  }
+
+  try {
+    await query('BEGIN');
+    
+    const result = await query(`
+      UPDATE recruitment_invitations
+      SET status = $1
+      WHERE id = $2 AND receiver_id = $3
+      RETURNING id, status, team_id
+    `, [status, req.params.id, req.user!.id]);
+
+    if (result.rows.length === 0) {
+      await query('ROLLBACK');
+      res.status(404).json({ error: 'Invitación no encontrada o no pertenece a tu usuario.' });
+      return;
+    }
+
+    // Si se aceptó, agregar al usuario como miembro del equipo
+    if (status === 'ACEPTADO') {
+      const invitation = result.rows[0];
+      await query(`
+        INSERT INTO team_members (team_id, user_id)
+        VALUES ($1, $2)
+        ON CONFLICT DO NOTHING
+      `, [invitation.team_id, req.user!.id]);
+    }
+
+    await query('COMMIT');
+
+    res.json({
+      message: `Invitación ${status === 'ACEPTADO' ? 'aceptada' : 'rechazada'} con éxito.`,
+      invitation: result.rows[0]
+    });
+  } catch (err) {
+    await query('ROLLBACK');
+    console.error('Error al responder invitación:', err);
+    res.status(500).json({ error: 'Error al responder la invitación.' });
+  }
+});
+
 export default router;
