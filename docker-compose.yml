@@ -1,15 +1,35 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zabesports_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: zabesports
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/src/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    container_name: zabesports_backend
+    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       - PORT=5000
       - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:admin123@postgres:5432/zabesports
+      - JWT_SECRET=zabesports_super_secret_jwt_key_2026
+    depends_on:
+      - postgres
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -18,7 +38,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: zabesports_frontend
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
       - backend
+
+volumes:
+  postgres_data:

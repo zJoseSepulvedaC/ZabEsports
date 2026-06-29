@@ -1,39 +1,76 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import pool from './db/pool';
+
+// Importar routers
+import authRouter        from './routes/auth';
+import communitiesRouter from './routes/communities';
+import tournamentsRouter from './routes/tournaments';
+import postsRouter       from './routes/posts';
+import playersRouter     from './routes/players';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// ============================================================
+// Middlewares globales
+// ============================================================
 app.use(cors());
 app.use(express.json());
 
-// Endpoint de salud
-app.get('/api/health', (req: Request, res: Response) => {
+// ============================================================
+// Rutas
+// ============================================================
+app.use('/api/auth',        authRouter);
+app.use('/api/communities', communitiesRouter);
+app.use('/api/tournaments', tournamentsRouter);
+app.use('/api/posts',       postsRouter);
+app.use('/api/players',     playersRouter);
+
+// Endpoint de salud — verifica también la conexión a la DB
+app.get('/api/health', async (req: Request, res: Response) => {
+  let dbStatus = 'DOWN';
+  try {
+    await pool.query('SELECT 1');
+    dbStatus = 'UP';
+  } catch {
+    dbStatus = 'DOWN';
+  }
+
   res.json({
-    status: 'UP',
+    status: dbStatus === 'UP' ? 'UP' : 'DEGRADED',
     timestamp: new Date(),
-    service: 'ZabEsports REST API'
+    service: 'ZabEsports REST API v2',
+    database: dbStatus,
+    endpoints: [
+      'POST /api/auth/register',
+      'POST /api/auth/login',
+      'GET  /api/auth/me',
+      'GET  /api/communities',
+      'POST /api/communities',
+      'PATCH /api/communities/:id/approve',
+      'GET  /api/tournaments',
+      'POST /api/tournaments',
+      'PATCH /api/tournaments/:id/approve',
+      'POST /api/tournaments/:id/register',
+      'GET  /api/posts',
+      'POST /api/posts',
+      'POST /api/posts/:id/like',
+      'GET  /api/players',
+    ]
   });
 });
 
-// Endpoint temporal para simular comunidades
-app.get('/api/communities', (req: Request, res: Response) => {
-  res.json([
-    { id: '1', name: 'Comunidad League of Legends Chile', description: 'Grupo para organizar torneos locales', is_approved: true },
-    { id: '2', name: 'Valorant VAV', description: 'Reclutamiento de equipos de Valorant', is_approved: false }
-  ]);
+// ============================================================
+// Iniciar servidor
+// ============================================================
+const server = app.listen(PORT, () => {
+  console.log(`⚡️ ZabEsports API corriendo en http://localhost:${PORT}`);
+  console.log(`📋 Health check: http://localhost:${PORT}/api/health`);
 });
 
-// Endpoint temporal para simular torneos
-app.get('/api/tournaments', (req: Request, res: Response) => {
-  res.json([
-    { id: '1', name: 'Torneo Apertura ZabEsports', description: 'Premio de 500 USD en skins', start_date: '2026-07-01', max_teams: 16, status: 'OPEN', is_approved: true }
-  ]);
-});
-
-app.listen(PORT, () => {
-  console.log(`⚡️[server]: Server is running at http://localhost:${PORT}`);
-});
+export { app, server };
+export default app;
