@@ -90,7 +90,7 @@ const translations = {
     carry: "Carrileo",
     notifTitle: "Invitaciones de Reclutamiento",
     notifEmpty: "No tienes invitaciones pendientes.",
-    notifReceived: "te invita a unirte a su escuadra para el torneo:",
+    notifReceived: "te invita a unirte a su escuadra:",
     notifAccept: "Aceptar",
     notifDecline: "Rechazar",
     recruitModalTitle: "Enviar Solicitud de Reclutamiento",
@@ -193,7 +193,7 @@ const translations = {
     carry: "Carry",
     notifTitle: "Recruitment Invitations",
     notifEmpty: "No pending invitations.",
-    notifReceived: "invites you to join their squad for the tournament:",
+    notifReceived: "invites you to join their squad:",
     notifAccept: "Accept",
     notifDecline: "Decline",
     recruitModalTitle: "Send Recruitment Request",
@@ -909,7 +909,7 @@ function App() {
                       <div key={inv.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', padding: '0.75rem', backgroundColor: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-light)', lineHeight: '1.3' }}>
                           <strong style={{ color: 'var(--accent-purple)' }}>@{inv.sender_username}</strong> {t.notifReceived}
-                          <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)', marginTop: '0.2rem' }}>{inv.tournament_name}</div>
+                          <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)', marginTop: '0.2rem' }}>{inv.team_name}</div>
                         </div>
                         {inv.message && (
                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', background: 'rgba(0,0,0,0.2)', padding: '0.35rem 0.5rem', borderRadius: '4px' }}>
@@ -1312,6 +1312,11 @@ function App() {
                       <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         👥 {team.member_count} {String(team.member_count) === '1' ? 'Miembro' : 'Miembros'}
                       </p>
+                      <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
+                        {team.members && team.members.map((member, i) => (
+                           <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(139,92,246,0.15)', color: 'var(--accent-purple)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 'bold' }}>@{member}</span>
+                        ))}
+                      </div>
                       {team.captain_id === currentUser?.id && (
                         <span className="role-badge" style={{ marginTop: '0.5rem', display: 'inline-block', fontSize: '0.7rem' }}>Capitán</span>
                       )}
