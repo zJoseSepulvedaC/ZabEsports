@@ -692,16 +692,23 @@ function App() {
                 <div className="card" style={{ padding: '1.25rem' }}>
                   {loadingCommunities ? <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>⏳ Cargando...</p> : (
                     <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {communities.filter(c => c.is_approved).map(c => (
+                      {communities.filter(c => c.is_approved || c.owner_username === currentUser?.username).map(c => (
                         <li key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
                           <div>
-                            <div style={{ fontWeight: 'bold' }}>🎮 {c.name}</div>
+                            <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span>🎮 {c.name}</span>
+                              {!c.is_approved && (
+                                <span style={{ fontSize: '0.65rem', background: 'rgba(255,184,0,0.15)', color: 'var(--accent-gold)', border: '1px solid var(--accent-gold)', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 'bold' }}>
+                                  {translations[lang].statusPending}
+                                </span>
+                              )}
+                            </div>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.member_count} {t.members} • {c.game}</span>
                           </div>
                           <button className="btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Ver</button>
                         </li>
                       ))}
-                      {communities.filter(c => c.is_approved).length === 0 && (
+                      {communities.filter(c => c.is_approved || c.owner_username === currentUser?.username).length === 0 && (
                         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t.noCommunities}</p>
                       )}
                     </ul>
