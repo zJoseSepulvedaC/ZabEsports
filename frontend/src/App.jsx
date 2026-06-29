@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// URL del backend en producción en Azure App Service
+const API_URL = 'https://zabesports-api-aje2efc6adawfyh0.eastus2-01.azurewebsites.net';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -78,7 +79,7 @@ function App() {
       setCurrentUser(data.user);
       setIsLoggedIn(true);
     } catch {
-      setLoginError('No se pudo conectar con el servidor. Verifica que el backend esté corriendo.');
+      setLoginError('No se pudo conectar con el servidor de Azure. Verifica la conexión.');
     }
   };
 
@@ -266,7 +267,7 @@ function App() {
             <header className="header">
               <h1>Welcome back, {currentUser?.username || 'José'}!</h1>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                {token ? '🟢 Conectado a la API' : '🟡 Modo Demo'}
+                {token ? '🟢 Conectado a Azure REST API' : '🟡 Modo Demo'}
               </span>
             </header>
             <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '2rem' }}>
