@@ -53,7 +53,13 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response): Pro
   try {
     const result = await query(`
       SELECT t.id, t.name, t.captain_id, t.created_at,
-             (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) as member_count
+             (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) as member_count,
+             (
+                SELECT json_agg(u.username)
+                FROM team_members tm2
+                JOIN users u ON u.id = tm2.user_id
+                WHERE tm2.team_id = t.id
+             ) as members
       FROM teams t
       JOIN team_members tm ON t.id = tm.team_id
       WHERE tm.user_id = $1
