@@ -6,9 +6,15 @@ const API_URL = 'https://zabesports-api-aje2efc6adawfyh0.eastus2-01.azurewebsite
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [authMode, setAuthMode] = useState('login'); // 'login' o 'register'
+  
+  // Estados de Formulario de Auth
   const [emailInput, setEmailInput] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
-  const [loginError, setLoginError] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
+  
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -25,9 +31,24 @@ function App() {
   const [selectedRole, setSelectedRole] = useState('ALL');
   const [selectedRank, setSelectedRank] = useState('ALL');
 
+  // Estados de Vinculación de Riot
+  const [riotGameName, setRiotGameName] = useState('');
+  const [riotTagLine, setRiotTagLine] = useState('');
+  const [riotRegion, setRiotRegion] = useState('LA2');
+  const [linkingState, setLinkingState] = useState('idle'); // 'idle', 'linking', 'verifying', 'success'
+  const [linkInfo, setLinkInfo] = useState(null);
+  const [linkError, setLinkError] = useState('');
+
   // ============================================================
   // Carga de datos desde la API
   // ============================================================
+  const fetchPlayers = () => {
+    fetch(`${API_URL}/api/players`)
+      .then(r => r.json())
+      .then(data => setPlayers(Array.isArray(data) ? data : []))
+      .catch(() => setPlayers([]));
+  };
+
   useEffect(() => {
     if (!isLoggedIn) return;
 
@@ -52,10 +73,7 @@ function App() {
       .catch(() => setPosts([]))
       .finally(() => setLoadingPosts(false));
 
-    fetch(`${API_URL}/api/players`)
-      .then(r => r.json())
-      .then(data => setPlayers(Array.isArray(data) ? data : []))
-      .catch(() => setPlayers([]));
+    fetchPlayers();
   }, [isLoggedIn]);
 
   // ============================================================
@@ -63,7 +81,8 @@ function App() {
   // ============================================================
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    setLoginError('');
+    setAuthError('');
+    setAuthSuccess('');
     try {
       const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
@@ -72,20 +91,38 @@ function App() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setLoginError(data.error || 'Error al iniciar sesión');
+        setAuthError(data.error || 'Error al iniciar sesión');
         return;
       }
       setToken(data.token);
       setCurrentUser(data.user);
       setIsLoggedIn(true);
     } catch {
-      setLoginError('No se pudo conectar con el servidor de Azure. Verifica la conexión.');
+      setAuthError('No se pudo conectar con el servidor de Azure. Verifica la conexión.');
     }
   };
 
-  const handleDemoLogin = (role) => {
-    setCurrentUser({ id: 'demo', username: 'JoseSepúlveda', email: 'jose@zabesports.cl', role });
-    setIsLoggedIn(true);
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthSuccess('');
+    try {
+      const res = await fetch(`${API_URL}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: usernameInput, email: emailInput, password: passwordInput })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error || 'Error al registrarse');
+        return;
+      }
+      setAuthSuccess('¡Cuenta creada con éxito! Ahora puedes iniciar sesión.');
+      setAuthMode('login');
+      setPasswordInput('');
+    } catch {
+      setAuthError('No se pudo conectar con el servidor de Azure. Verifica la conexión.');
+    }
   };
 
   const handleLogout = () => {
@@ -93,21 +130,83 @@ function App() {
     setCurrentUser(null);
     setToken('');
     setEmailInput('');
+    setUsernameInput('');
     setPasswordInput('');
     setPosts([]);
     setCommunities([]);
     setTournaments([]);
     setPlayers([]);
+    setLinkingState('idle');
+    setLinkInfo(null);
+    setLinkError('');
+  };
+
+  // ============================================================
+  // Vinculación de Riot Games
+  // ============================================================
+  const handleRiotLinkStart = async (e) => {
+    e.preventDefault();
+    setLinkError('');
+    setLinkingState('linking');
+    try {
+      const res = await fetch(`${API_URL}/api/players/riot-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gameName: riotGameName, tagLine: riotTagLine, region: riotRegion })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLinkError(data.error || 'Error al iniciar vinculación');
+        setLinkingState('idle');
+        return;
+      }
+      setLinkInfo(data);
+      setLinkingState('verifying');
+    } catch {
+      setLinkError('Error de red al conectar con el servidor.');
+      setLinkingState('idle');
+    }
+  };
+
+  const handleRiotLinkVerify = async () => {
+    setLinkError('');
+    try {
+      const res = await fetch(`${API_URL}/api/players/riot-verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          puuid: linkInfo.puuid,
+          gameName: linkInfo.gameName,
+          tagLine: linkInfo.tagLine,
+          targetIconId: linkInfo.targetIconId,
+          userId: currentUser.id
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setLinkError(data.error || 'Icono no coincide');
+        return;
+      }
+      
+      // Actualizar usuario en sesión
+      setCurrentUser(prev => ({
+        ...prev,
+        riot_summoner_name: data.riot_summoner_name,
+        lol_rank: data.lol_rank,
+        lol_summoner_level: data.lol_summoner_level
+      }));
+      setLinkingState('success');
+      fetchPlayers();
+    } catch {
+      setLinkError('Error de red al conectar con el servidor.');
+    }
   };
 
   // ============================================================
   // Acciones API
   // ============================================================
   const handleLike = async (postId) => {
-    if (!token) {
-      setPosts(posts.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
-      return;
-    }
+    if (!token) return;
     try {
       const res = await fetch(`${API_URL}/api/posts/${postId}/like`, {
         method: 'POST',
@@ -123,10 +222,7 @@ function App() {
   };
 
   const handleApproveCommunity = async (id) => {
-    if (!token) {
-      setCommunities(communities.map(c => c.id === id ? { ...c, is_approved: true } : c));
-      return;
-    }
+    if (!token) return;
     try {
       const res = await fetch(`${API_URL}/api/communities/${id}/approve`, {
         method: 'PATCH',
@@ -139,10 +235,7 @@ function App() {
   };
 
   const handleApproveTournament = async (id) => {
-    if (!token) {
-      setTournaments(tournaments.map(t => t.id === id ? { ...t, is_approved: true } : t));
-      return;
-    }
+    if (!token) return;
     try {
       const res = await fetch(`${API_URL}/api/tournaments/${id}/approve`, {
         method: 'PATCH',
@@ -156,14 +249,14 @@ function App() {
 
   const filteredPlayers = players.filter(player => {
     const matchRole = selectedRole === 'ALL' || player.position === selectedRole;
-    const matchRank = selectedRank === 'ALL' || (player.rank && player.rank.includes(selectedRank));
+    const matchRank = selectedRank === 'ALL' || (player.rank && player.rank.toUpperCase().includes(selectedRank.toUpperCase()));
     return matchRole && matchRank;
   });
 
   const userRole = currentUser?.role || 'usuario';
 
   // ============================================================
-  // PANTALLA LOGIN
+  // PANTALLA LOGIN Y REGISTRO
   // ============================================================
   if (!isLoggedIn) {
     return (
@@ -175,46 +268,61 @@ function App() {
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>E-sports Hub &amp; Communities</div>
           </div>
 
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.25rem' }}>BIENVENIDO</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '2rem' }}>Inicia sesión para continuar</p>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.25rem' }}>
+            {authMode === 'login' ? 'BIENVENIDO DE VUELTA' : 'CREA TU CUENTA'}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '2rem' }}>
+            {authMode === 'login' ? 'Inicia sesión para continuar' : 'Únete a la mayor red de esports competitiva'}
+          </p>
 
-          {loginError && (
+          {authError && (
             <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', color: '#f87171', fontSize: '0.85rem' }}>
-              ⚠️ {loginError}
+              ⚠️ {authError}
             </div>
           )}
 
-          <form className="login-form" onSubmit={handleLoginSubmit}>
-            <div className="input-group">
-              <label>Correo Electrónico</label>
-              <input type="email" className="input-field" placeholder="ejemplo@correo.com" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} />
+          {authSuccess && (
+            <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', color: '#34d399', fontSize: '0.85rem' }}>
+              ✅ {authSuccess}
             </div>
-            <div className="input-group">
-              <label>Contraseña</label>
-              <input type="password" className="input-field" placeholder="••••••••" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} />
-            </div>
-            <div style={{ textAlign: 'right', fontSize: '0.8rem' }}>
-              <a href="#" style={{ color: 'var(--accent-purple)', textDecoration: 'none' }}>¿Olvidaste tu contraseña?</a>
-            </div>
-            <button type="submit" className="btn-login">INICIAR SESIÓN</button>
-          </form>
+          )}
 
-          <div className="sso-divider">O ingresa en modo demo</div>
-          <div className="sso-buttons">
-            <button className="sso-btn" onClick={() => handleDemoLogin('admin')}>
-              🛡️ Demo Admin (jose@zabesports.cl)
-            </button>
-            <button className="sso-btn" onClick={() => handleDemoLogin('usuario')}>
-              🎮 Demo Usuario Final
-            </button>
-          </div>
+          {authMode === 'login' ? (
+            <form className="login-form" onSubmit={handleLoginSubmit}>
+              <div className="input-group">
+                <label>Correo Electrónico</label>
+                <input type="email" className="input-field" placeholder="ejemplo@correo.com" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>Contraseña</label>
+                <input type="password" className="input-field" placeholder="••••••••" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} />
+              </div>
+              <button type="submit" className="btn-login">INICIAR SESIÓN</button>
+            </form>
+          ) : (
+            <form className="login-form" onSubmit={handleRegisterSubmit}>
+              <div className="input-group">
+                <label>Nombre de Usuario</label>
+                <input type="text" className="input-field" placeholder="Tu username" required value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>Correo Electrónico</label>
+                <input type="email" className="input-field" placeholder="ejemplo@correo.com" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>Contraseña</label>
+                <input type="password" className="input-field" placeholder="Mínimo 6 caracteres" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} />
+              </div>
+              <button type="submit" className="btn-login" style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-pink))' }}>REGISTRARSE</button>
+            </form>
+          )}
 
-          <div style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)', borderRadius: '8px', padding: '0.75rem', marginTop: '1rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-            <strong style={{ color: 'var(--accent-purple)' }}>Credenciales DB:</strong> jose@zabesports.cl / password123
-          </div>
-
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '1.5rem' }}>
-            ¿No tienes cuenta? <a href="#" style={{ color: 'var(--accent-purple)', textDecoration: 'none' }}>Registrarse</a>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2rem' }}>
+            {authMode === 'login' ? (
+              <>¿No tienes cuenta? <a href="#" onClick={(e) => { e.preventDefault(); setAuthMode('register'); setAuthError(''); }} style={{ color: 'var(--accent-purple)', fontWeight: 'bold', textDecoration: 'none' }}>Registrarse</a></>
+            ) : (
+              <>¿Ya tienes cuenta? <a href="#" onClick={(e) => { e.preventDefault(); setAuthMode('login'); setAuthError(''); }} style={{ color: 'var(--accent-purple)', fontWeight: 'bold', textDecoration: 'none' }}>Iniciar Sesión</a></>
+            )}
           </p>
         </div>
       </div>
@@ -222,7 +330,7 @@ function App() {
   }
 
   // ============================================================
-  // APLICACIÓN PRINCIPAL
+  // APLICACIÓN PRINCIPAL (LOGUEADO)
   // ============================================================
   return (
     <div className="app-container">
@@ -235,8 +343,9 @@ function App() {
         <nav>
           <ul className="nav-links">
             <li className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>🏠 Home (Feed)</li>
-            <li className={`nav-item ${activeTab === 'recruitment' ? 'active' : ''}`} onClick={() => setActiveTab('recruitment')}>🤝 Reclutamiento</li>
+            <li className={`nav-item ${activeTab === 'recruitment' ? 'active' : ''}`} onClick={() => setActiveTab('recruitment')}>🤝 Team Builder</li>
             <li className={`nav-item ${activeTab === 'tournaments' ? 'active' : ''}`} onClick={() => setActiveTab('tournaments')}>🏆 Torneos</li>
+            <li className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>👤 Mi Perfil</li>
             {(userRole === 'moderador' || userRole === 'admin') && (
               <li className={`nav-item ${activeTab === 'moderation' ? 'active' : ''}`} onClick={() => setActiveTab('moderation')}>🛡️ Moderación</li>
             )}
@@ -245,14 +354,14 @@ function App() {
         <div className="user-profile-summary">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-              {currentUser?.username?.charAt(0).toUpperCase() || 'J'}
+              {currentUser?.username?.charAt(0).toUpperCase() || 'U'}
             </div>
             <div>
-              <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{currentUser?.username || 'José Sepúlveda'}</div>
+              <div style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{currentUser?.username}</div>
               <span className="role-badge" style={{ marginTop: '0.1rem', display: 'inline-block' }}>{userRole}</span>
             </div>
           </div>
-          <button onClick={handleLogout} className="action-btn" style={{ fontSize: '0.8rem', color: 'var(--danger)', marginTop: '0.75rem' }}>
+          <button onClick={handleLogout} className="action-btn" style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '0.75rem', border: 'none', background: 'none', cursor: 'pointer' }}>
             🚪 Cerrar Sesión
           </button>
         </div>
@@ -265,9 +374,9 @@ function App() {
         {activeTab === 'dashboard' && (
           <div>
             <header className="header">
-              <h1>Welcome back, {currentUser?.username || 'José'}!</h1>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                {token ? '🟢 Conectado a Azure REST API' : '🟡 Modo Demo'}
+              <h1>Welcome back, {currentUser?.username}!</h1>
+              <span style={{ color: 'var(--success)', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                🟢 Conectado a Azure Cloud
               </span>
             </header>
             <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '2rem' }}>
@@ -330,12 +439,12 @@ function App() {
           </div>
         )}
 
-        {/* RECLUTAMIENTO */}
+        {/* TEAM BUILDER (RECLUTAMIENTO REAL) */}
         {activeTab === 'recruitment' && (
           <div>
             <header className="header">
               <h1>TEAM BUILDER</h1>
-              <button className="btn-primary">Postularme</button>
+              <button className="btn-primary" onClick={() => setActiveTab('profile')}>Postularme (Vincular Riot)</button>
             </header>
             <div className="filters-bar" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
               <div>
@@ -355,6 +464,7 @@ function App() {
                   <option value="ALL">All Ranks</option>
                   <option value="Diamond">Diamond</option>
                   <option value="Master">Master</option>
+                  <option value="Grandmaster">Grandmaster</option>
                   <option value="Challenger">Challenger</option>
                 </select>
               </div>
@@ -363,19 +473,30 @@ function App() {
               {filteredPlayers.map(player => (
                 <div key={player.id} className="player-card">
                   <span className="player-role-banner">{player.position}</span>
-                  <div className="player-avatar-container"><div className="player-avatar-inner">👤</div></div>
+                  <div className="player-avatar-container">
+                    <div className="player-avatar-inner" style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
+                      Lvl {player.level}
+                    </div>
+                  </div>
                   <h4>{player.username}</h4>
-                  <div className="summoner-name">{player.rank}</div>
+                  <div className="summoner-name" style={{ color: 'var(--accent-purple)', fontWeight: 'bold' }}>
+                    🎮 {player.riot_name}
+                  </div>
+                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.75rem', borderRadius: '4px', display: 'inline-block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '1rem', color: 'var(--text-light)' }}>
+                    🏆 {player.rank}
+                  </div>
                   <div className="player-stats">
                     <div className="stat-item"><span className="stat-label">Win Rate</span><span className="stat-val" style={{ color: 'var(--success)' }}>{player.winrate}</span></div>
                     <div className="stat-item"><span className="stat-label">KDA</span><span className="stat-val">{player.kda}</span></div>
                   </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>🕒 {player.availability}</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>Availability: {player.availability}</div>
                   <button className="btn-primary" style={{ width: '100%' }}>RECRUIT TO TEAM</button>
                 </div>
               ))}
               {filteredPlayers.length === 0 && (
-                <div style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>No hay jugadores con esos filtros.</div>
+                <div style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-muted)', padding: '3rem' }}>
+                  No hay jugadores vinculados en este rango/posición todavía. Vincula tu cuenta en 'Mi Perfil' para aparecer aquí.
+                </div>
               )}
             </div>
           </div>
@@ -417,6 +538,148 @@ function App() {
               {!loadingTournaments && tournaments.length === 0 && (
                 <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay torneos registrados aún.</div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* MI PERFIL & VINCULACIÓN RIOT */}
+        {activeTab === 'profile' && (
+          <div>
+            <header className="header">
+              <h1>Mi Perfil de Invocador</h1>
+            </header>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '2rem' }}>
+              {/* Información actual del perfil */}
+              <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
+                <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold', margin: '0 auto 1.5rem' }}>
+                  {currentUser?.username?.charAt(0).toUpperCase()}
+                </div>
+                <h3 style={{ fontSize: '1.4rem', marginBottom: '0.25rem' }}>{currentUser?.username}</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>{currentUser?.email}</p>
+                
+                <hr style={{ borderColor: 'var(--border-color)', margin: '1.5rem 0' }} />
+                
+                {currentUser?.riot_summoner_name ? (
+                  <div>
+                    <span style={{ color: 'var(--success)', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                      ✓ Cuenta Riot Vinculada
+                    </span>
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>RIOT ID</div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>🎮 {currentUser.riot_summoner_name}</div>
+                      
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>RANGO LOL</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>🏆 {currentUser.lol_rank}</div>
+                      
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>NIVEL</div>
+                      <div style={{ fontSize: '0.9rem' }}>⭐ {currentUser.lol_summoner_level}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <span style={{ color: '#ef4444', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                      ⚠️ Sin Cuenta Riot Vinculada
+                    </span>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      Vincula tu cuenta para obtener tu rango oficial de Riot Games y postularte en el Team Builder.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Proceso de Vinculación */}
+              <div className="card" style={{ padding: '2rem' }}>
+                <h3 style={{ marginBottom: '1rem' }}>Vincular con Riot Games API</h3>
+                
+                {linkError && (
+                  <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem', color: '#f87171', fontSize: '0.85rem' }}>
+                    ⚠️ {linkError}
+                  </div>
+                )}
+
+                {linkingState === 'idle' && (
+                  <form onSubmit={handleRiotLinkStart}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
+                      Ingresa tu Riot ID de League of Legends. El sistema se conectará a la API oficial de Riot para validar la cuenta y sincronizar tu rango y nivel.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '1rem' }}>
+                      <div className="input-group">
+                        <label>Nombre de Invocador (Game Name)</label>
+                        <input type="text" className="input-field" placeholder="Ej: Zabat" required value={riotGameName} onChange={(e) => setRiotGameName(e.target.value)} />
+                      </div>
+                      <div className="input-group">
+                        <label>Etiqueta (Tagline)</label>
+                        <input type="text" className="input-field" placeholder="Ej: sun (sin #)" required value={riotTagLine} onChange={(e) => setRiotTagLine(e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="input-group">
+                      <label>Región del Servidor</label>
+                      <select className="select-filter" style={{ width: '100%', padding: '0.75rem' }} value={riotRegion} onChange={(e) => setRiotRegion(e.target.value)}>
+                        <option value="LA2">LAS (Latin America South)</option>
+                        <option value="LA1">LAN (Latin America North)</option>
+                        <option value="NA1">NA (North America)</option>
+                        <option value="BR1">BR (Brazil)</option>
+                        <option value="EUW1">EUW (Europe West)</option>
+                      </select>
+                    </div>
+                    <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.75rem', marginTop: '1rem' }}>
+                      CONECTAR CUENTA
+                    </button>
+                  </form>
+                )}
+
+                {linkingState === 'linking' && (
+                  <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>⏳ Conectando con Riot Games...</div>
+                    <p style={{ color: 'var(--text-muted)' }}>Estamos buscando el PUUID en el cluster de América.</p>
+                  </div>
+                )}
+
+                {linkingState === 'verifying' && (
+                  <div>
+                    <h4 style={{ color: 'var(--accent-purple)', marginBottom: '0.5rem' }}>✓ Cuenta encontrada: {linkInfo?.gameName}#{linkInfo?.tagLine}</h4>
+                    <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                      <p style={{ fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text-light)' }}>
+                        🔒 Paso de Validación de Identidad:
+                      </p>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', marginBottom: '1rem' }}>
+                        Para verificar que eres el dueño de la cuenta, abre tu cliente de League of Legends (o TFT Mobile) y cambia temporalmente tu icono de perfil al siguiente:
+                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '0.75rem 1rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                        <span style={{ fontSize: '1.5rem' }}>🎨</span>
+                        <div>
+                          <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{linkInfo?.targetIconName}</div>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID de Icono: {linkInfo?.targetIconId}</span>
+                        </div>
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem', fontStyle: 'italic' }}>
+                        * Nota: Si eres el dueño de Zabat#sun, el backend detectará tu icono actual de forma directa para facilitar la demo en clase.
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                      <button className="btn-primary" onClick={handleRiotLinkVerify} style={{ flex: 1, padding: '0.75rem' }}>
+                        VERIFICAR ICONO
+                      </button>
+                      <button className="btn-primary" onClick={() => setLinkingState('idle')} style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {linkingState === 'success' && (
+                  <div style={{ textAlign: 'center', padding: '2rem' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
+                    <h3 style={{ color: 'var(--success)', marginBottom: '0.5rem' }}>¡Vinculación Completa!</h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+                      Tu rango de LoL ha sido importado con éxito y ya figuras en la lista de reclutamiento competitivo.
+                    </p>
+                    <button className="btn-primary" onClick={() => setLinkingState('idle')}>
+                      Vincular otra cuenta
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

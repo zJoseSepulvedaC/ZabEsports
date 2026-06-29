@@ -109,12 +109,22 @@ jobs:
       - name: Build TypeScript
         run: npm run build
 
-      - name: Deploy a Azure App Service
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: .
+      - name: Create Deploy Zip
+        run: zip -r deploy.zip dist package.json package-lock.json node_modules
+
+      - name: Deploy to Azure Web App via Zip Deploy API
+        run: |
+          # Extraer credenciales del perfil de publicación XML
+          USER_NAME=$(echo '${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}' | grep -o 'userName="[^"]*"' | head -n 1 | cut -d'"' -f2)
+          USER_PWD=$(echo '${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}' | grep -o 'userPWD="[^"]*"' | head -n 1 | cut -d'"' -f2)
+          PUBLISH_URL=$(echo '${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}' | grep -o 'publishUrl="[^"]*"' | head -n 1 | cut -d'"' -f2 | cut -d':' -f1)
+          
+          echo "Desplegando a $PUBLISH_URL usando Zip Deploy API..."
+          curl -X POST \
+            -u "$USER_NAME:$USER_PWD" \
+            --headers "Content-Type: application/zip" \
+            --data-binary @deploy.zip \
+            "https://$PUBLISH_URL/api/zipdeploy"
 
   # ============================================================
   # JOB 4: Cerrar PR (Azure Static Web Apps)

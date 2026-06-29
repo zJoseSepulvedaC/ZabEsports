@@ -14,12 +14,18 @@ CREATE TABLE IF NOT EXISTS users (
     role        VARCHAR(20)  NOT NULL DEFAULT 'usuario'
                   CHECK (role IN ('usuario', 'moderador', 'admin')),
     avatar_url  TEXT,
+    riot_puuid  VARCHAR(100) UNIQUE,
+    riot_game_name VARCHAR(100),
+    riot_tag_line  VARCHAR(10),
+    lol_rank       VARCHAR(50),
+    lol_summoner_level INTEGER,
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email    ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_puuid    ON users(riot_puuid);
 
 -- ============================================================
 -- TABLA: communities
