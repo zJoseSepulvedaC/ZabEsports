@@ -646,7 +646,11 @@ function App() {
                         Para verificar que eres el dueño de la cuenta, abre tu cliente de League of Legends (o TFT Mobile) y cambia temporalmente tu icono de perfil al siguiente:
                       </p>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '0.75rem 1rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                        <span style={{ fontSize: '1.5rem' }}>🎨</span>
+                        <img 
+                          src={`https://ddragon.leagueoflegends.com/cdn/14.13.1/img/profileicon/${linkInfo?.targetIconId}.png`} 
+                          alt={linkInfo?.targetIconName} 
+                          style={{ width: '64px', height: '64px', borderRadius: '8px', border: '2px solid var(--accent-purple)' }} 
+                        />
                         <div>
                           <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{linkInfo?.targetIconName}</div>
                           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID de Icono: {linkInfo?.targetIconId}</span>
