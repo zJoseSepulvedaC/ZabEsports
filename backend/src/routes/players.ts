@@ -11,7 +11,7 @@ const VERIFICATION_ICONS = [
   { id: 0,   name: 'Iniciador Espadas Cruzadas' },
   { id: 7,   name: 'Rosa Roja Clásica' },
   { id: 15,  name: 'Invocador Clásico Verde (Pócima)' },
-  { id: 11,  name: 'Invocador Clásico Rojo (Zarpazo)' }
+  { id: 11,  name: 'Reptil Verde (Zarpazo)' }
 ];
 
 // Helper para hacer llamadas HTTP a la API de Riot Games
