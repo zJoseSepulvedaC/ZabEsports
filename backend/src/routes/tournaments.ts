@@ -9,7 +9,7 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const result = await query(`
       SELECT
-        t.id, t.name, t.description, t.game, t.start_date, t.end_date,
+        t.id, t.name, t.description, t.game, t.start_date,
         t.max_teams, t.status, t.is_approved, t.prize_pool, t.created_at,
         u.username AS organizer_username,
         c.name AS community_name,
@@ -33,7 +33,7 @@ router.get('/:id', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const result = await query(`
       SELECT
-        t.id, t.name, t.description, t.game, t.start_date, t.end_date,
+        t.id, t.name, t.description, t.game, t.start_date,
         t.max_teams, t.status, t.is_approved, t.prize_pool, t.created_at,
         u.username AS organizer_username,
         COUNT(tr.id)::int AS registered_teams
