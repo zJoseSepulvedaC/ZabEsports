@@ -52,7 +52,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
         u.lol_summoner_level,
         u.riot_game_name,
         u.riot_tag_line,
-        u.created_at
+        u.created_at,
+        (SELECT t.name FROM team_members tm JOIN teams t ON t.id = tm.team_id WHERE tm.user_id = u.id LIMIT 1) AS team_name
       FROM users u
       WHERE u.riot_puuid IS NOT NULL
       ORDER BY u.lol_summoner_level DESC NULLS LAST
