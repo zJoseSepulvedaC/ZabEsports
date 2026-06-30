@@ -89,7 +89,8 @@ router.get('/', async (req: Request, res: Response): Promise<void> => {
         winrate,
         kda,
         availability: availabilities[availIndex],
-        created_at: u.created_at
+        created_at: u.created_at,
+        team_name: u.team_name
       };
     });
 
