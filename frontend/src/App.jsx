@@ -258,6 +258,7 @@ function App() {
 
   const [selectedRole, setSelectedRole] = useState('ALL');
   const [selectedRank, setSelectedRank] = useState('ALL');
+  const [selectedTeamStatus, setSelectedTeamStatus] = useState('ALL');
 
   // Modales CRUD
   const [showTourneyModal, setShowTourneyModal] = useState(false);
@@ -755,7 +756,10 @@ function App() {
   const filteredPlayers = players.filter(player => {
     const matchRole = selectedRole === 'ALL' || player.position === selectedRole;
     const matchRank = selectedRank === 'ALL' || (player.rank && player.rank.toUpperCase().includes(selectedRank.toUpperCase()));
-    return matchRole && matchRank;
+    let matchTeam = true;
+    if (selectedTeamStatus === 'HAS_TEAM') matchTeam = !!player.team_name;
+    if (selectedTeamStatus === 'FREE_AGENT') matchTeam = !player.team_name;
+    return matchRole && matchRank && matchTeam;
   });
 
   const userRole = currentUser?.role || 'usuario';
@@ -1064,6 +1068,14 @@ function App() {
                   <option value="Challenger">{t.rank_challenger}</option>
                 </select>
               </div>
+              <div>
+                <label style={{ marginRight: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Estado Equipo:</label>
+                <select className="select-filter" value={selectedTeamStatus} onChange={(e) => setSelectedTeamStatus(e.target.value)}>
+                  <option value="ALL">Todos</option>
+                  <option value="HAS_TEAM">Con Escuadra</option>
+                  <option value="FREE_AGENT">Agente Libre</option>
+                </select>
+              </div>
             </div>
             <div className="player-grid">
               {filteredPlayers.map(player => (
@@ -1084,6 +1096,17 @@ function App() {
                   </h4>
                   <div className="summoner-name" style={{ color: 'var(--accent-purple)', fontWeight: 'bold' }}>
                     🎮 {player.riot_name}
+                  </div>
+                  <div style={{ margin: '0.5rem 0', fontSize: '0.85rem' }}>
+                    {player.team_name ? (
+                      <span style={{ color: 'var(--accent-cyan)', background: 'rgba(0, 240, 255, 0.1)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 'bold' }}>
+                        🛡️ Escuadra: {player.team_name}
+                      </span>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.05)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
+                        🏃 Agente Libre
+                      </span>
+                    )}
                   </div>
                   <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.75rem', borderRadius: '4px', display: 'inline-block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '1rem', color: 'var(--text-light)' }}>
                     🏆 {player.rank}
