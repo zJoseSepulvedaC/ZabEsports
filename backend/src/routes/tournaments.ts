@@ -150,7 +150,7 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
     }
 
     const result = await query(
-      `INSERT INTO tournament_registrations (tournament_id, user_id, team_id)
+      `INSERT INTO tournament_registrations (tournament_id, registered_by, team_id)
        VALUES ($1, $2, $3) RETURNING id, team_id, registered_at`,
       [req.params.id, req.user!.id, team_id]
     );
