@@ -7,21 +7,57 @@ const router = Router();
 // GET /api/tournaments — Lista de torneos
 router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const result = await query(`
-      SELECT
-        t.id, t.name, t.description, t.game, t.start_date,
-        t.max_teams, t.status, t.is_approved, t.prize_pool, t.created_at,
-        u.username AS organizer_username,
-        c.name AS community_name,
-        COUNT(tr.id)::int AS registered_teams
-      FROM tournaments t
-      JOIN users u ON u.id = t.organizer_id
-      LEFT JOIN communities c ON c.id = t.community_id
-      LEFT JOIN tournament_registrations tr ON tr.tournament_id = t.id
-      GROUP BY t.id, u.username, c.name
-      ORDER BY t.start_date ASC
-    `);
-    res.json(result.rows);
+    if (req.query.page || req.query.limit) {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+
+      const totalResult = await query('SELECT COUNT(*)::int AS count FROM tournaments');
+      const total = totalResult.rows[0].count;
+      const totalPages = Math.ceil(total / limit);
+
+      const result = await query(`
+        SELECT
+          t.id, t.name, t.description, t.game, t.start_date,
+          t.max_teams, t.status, t.is_approved, t.prize_pool, t.created_at,
+          u.username AS organizer_username,
+          c.name AS community_name,
+          COUNT(tr.id)::int AS registered_teams
+        FROM tournaments t
+        JOIN users u ON u.id = t.organizer_id
+        LEFT JOIN communities c ON c.id = t.community_id
+        LEFT JOIN tournament_registrations tr ON tr.tournament_id = t.id
+        GROUP BY t.id, u.username, c.name
+        ORDER BY t.start_date ASC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+
+      res.json({
+        data: result.rows,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages
+        }
+      });
+    } else {
+      const allResult = await query(`
+        SELECT
+          t.id, t.name, t.description, t.game, t.start_date,
+          t.max_teams, t.status, t.is_approved, t.prize_pool, t.created_at,
+          u.username AS organizer_username,
+          c.name AS community_name,
+          COUNT(tr.id)::int AS registered_teams
+        FROM tournaments t
+        JOIN users u ON u.id = t.organizer_id
+        LEFT JOIN communities c ON c.id = t.community_id
+        LEFT JOIN tournament_registrations tr ON tr.tournament_id = t.id
+        GROUP BY t.id, u.username, c.name
+        ORDER BY t.start_date ASC
+      `);
+      res.json(allResult.rows);
+    }
   } catch (err) {
     console.error('Error al obtener torneos:', err);
     res.status(500).json({ error: 'Error interno del servidor.' });

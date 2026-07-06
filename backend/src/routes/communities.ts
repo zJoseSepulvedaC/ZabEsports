@@ -7,23 +7,62 @@ const router = Router();
 // GET /api/communities — Lista pública de comunidades aprobadas
 router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const result = await query(`
-      SELECT
-        c.id,
-        c.name,
-        c.description,
-        c.game,
-        c.is_approved,
-        c.created_at,
-        u.username AS owner_username,
-        COUNT(cm.user_id)::int AS member_count
-      FROM communities c
-      JOIN users u ON u.id = c.owner_id
-      LEFT JOIN community_members cm ON cm.community_id = c.id
-      GROUP BY c.id, u.username
-      ORDER BY c.created_at DESC
-    `);
-    res.json(result.rows);
+    if (req.query.page || req.query.limit) {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+
+      const totalResult = await query('SELECT COUNT(*)::int AS count FROM communities');
+      const total = totalResult.rows[0].count;
+      const totalPages = Math.ceil(total / limit);
+
+      const result = await query(`
+        SELECT
+          c.id,
+          c.name,
+          c.description,
+          c.game,
+          c.is_approved,
+          c.created_at,
+          u.username AS owner_username,
+          COUNT(cm.user_id)::int AS member_count
+        FROM communities c
+        JOIN users u ON u.id = c.owner_id
+        LEFT JOIN community_members cm ON cm.community_id = c.id
+        GROUP BY c.id, u.username
+        ORDER BY c.created_at DESC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+
+      res.json({
+        data: result.rows,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages
+        }
+      });
+    } else {
+      // Retorno completo sin paginar si no se especifican parámetros
+      const allResult = await query(`
+        SELECT
+          c.id,
+          c.name,
+          c.description,
+          c.game,
+          c.is_approved,
+          c.created_at,
+          u.username AS owner_username,
+          COUNT(cm.user_id)::int AS member_count
+        FROM communities c
+        JOIN users u ON u.id = c.owner_id
+        LEFT JOIN community_members cm ON cm.community_id = c.id
+        GROUP BY c.id, u.username
+        ORDER BY c.created_at DESC
+      `);
+      res.json(allResult.rows);
+    }
   } catch (err) {
     console.error('Error al obtener comunidades:', err);
     res.status(500).json({ error: 'Error interno del servidor.' });

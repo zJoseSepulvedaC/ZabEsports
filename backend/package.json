@@ -14,6 +14,7 @@
   "license": "ISC",
   "description": "ZabEsports REST API - Backend con Node.js, Express, TypeScript y PostgreSQL",
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1080.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -38,9 +39,18 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["**/__tests__/**/*.test.ts"],
+    "testMatch": [
+      "**/__tests__/**/*.test.ts"
+    ],
     "transform": {
-      "^.+\\.tsx?$": ["ts-jest", { "tsconfig": { "strict": false } }]
+      "^.+\\.tsx?$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "strict": false
+          }
+        }
+      ]
     }
   }
 }

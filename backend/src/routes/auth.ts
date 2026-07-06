@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { query } from '../db/pool';
+import { isCognitoConfigured, registerUserInCognito, loginUserInCognito } from '../services/cognitoService';
 
 const router = Router();
 
@@ -21,12 +22,17 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
 
   try {
     const password_hash = await bcrypt.hash(password, 10);
+    let userId: string | null = null;
+
+    if (isCognitoConfigured()) {
+      userId = await registerUserInCognito(username, email, password);
+    }
 
     const result = await query(
-      `INSERT INTO users (username, email, password_hash, role)
-       VALUES ($1, $2, $3, 'usuario')
+      `INSERT INTO users (id, username, email, password_hash, role)
+       VALUES (COALESCE($1, gen_random_uuid()), $2, $3, $4, 'usuario')
        RETURNING id, username, email, role, created_at`,
-      [username, email, password_hash]
+      [userId, username, email, password_hash]
     );
 
     res.status(201).json({
@@ -34,12 +40,12 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       user: result.rows[0]
     });
   } catch (err: unknown) {
-    const e = err as { code?: string };
+    const e = err as { code?: string; message?: string };
     if (e.code === '23505') {
       res.status(409).json({ error: 'El email o username ya está registrado.' });
     } else {
       console.error('Error en registro:', err);
-      res.status(500).json({ error: 'Error interno del servidor.' });
+      res.status(500).json({ error: e.message || 'Error interno del servidor.' });
     }
   }
 });
@@ -54,30 +60,51 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
-    const result = await query(
-      'SELECT id, username, email, password_hash, role, riot_game_name, riot_tag_line, lol_rank, lol_summoner_level FROM users WHERE email = $1',
-      [email]
-    );
+    let user;
+    let token;
 
-    if (result.rows.length === 0) {
-      res.status(401).json({ error: 'Credenciales inválidas.' });
-      return;
+    if (isCognitoConfigured()) {
+      // Flujo de autenticación con AWS Cognito
+      const cognitoTokens = await loginUserInCognito(email, password);
+      token = cognitoTokens.token; // AccessToken de Cognito para las APIs
+
+      const result = await query(
+        'SELECT id, username, email, role, riot_game_name, riot_tag_line, lol_rank, lol_summoner_level FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: 'Usuario autenticado en Cognito, pero no existe en base de datos local.' });
+        return;
+      }
+      user = result.rows[0];
+    } else {
+      // Flujo local de autenticación
+      const result = await query(
+        'SELECT id, username, email, password_hash, role, riot_game_name, riot_tag_line, lol_rank, lol_summoner_level FROM users WHERE email = $1',
+        [email]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(401).json({ error: 'Credenciales inválidas.' });
+        return;
+      }
+
+      user = result.rows[0];
+      const validPassword = await bcrypt.compare(password, user.password_hash);
+
+      if (!validPassword) {
+        res.status(401).json({ error: 'Credenciales inválidas.' });
+        return;
+      }
+
+      const secret = process.env.JWT_SECRET || 'zabesports_dev_secret';
+      token = jwt.sign(
+        { id: user.id, username: user.username, email: user.email, role: user.role },
+        secret,
+        { expiresIn: '24h' }
+      );
     }
-
-    const user = result.rows[0];
-    const validPassword = await bcrypt.compare(password, user.password_hash);
-
-    if (!validPassword) {
-      res.status(401).json({ error: 'Credenciales inválidas.' });
-      return;
-    }
-
-    const secret = process.env.JWT_SECRET || 'zabesports_dev_secret';
-    const token = jwt.sign(
-      { id: user.id, username: user.username, email: user.email, role: user.role },
-      secret,
-      { expiresIn: '24h' }
-    );
 
     res.json({
       message: 'Login exitoso.',

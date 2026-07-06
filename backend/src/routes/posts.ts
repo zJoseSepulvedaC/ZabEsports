@@ -7,19 +7,53 @@ const router = Router();
 // GET /api/posts — Feed público de posts
 router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const result = await query(`
-      SELECT
-        p.id, p.title, p.content, p.likes, p.is_visible, p.created_at,
-        u.username AS author_username,
-        c.name AS community_name
-      FROM posts p
-      JOIN users u ON u.id = p.author_id
-      LEFT JOIN communities c ON c.id = p.community_id
-      WHERE p.is_visible = TRUE
-      ORDER BY p.created_at DESC
-      LIMIT 50
-    `);
-    res.json(result.rows);
+    if (req.query.page || req.query.limit) {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const offset = (page - 1) * limit;
+
+      const totalResult = await query('SELECT COUNT(*)::int AS count FROM posts WHERE is_visible = TRUE');
+      const total = totalResult.rows[0].count;
+      const totalPages = Math.ceil(total / limit);
+
+      const result = await query(`
+        SELECT
+          p.id, p.title, p.content, p.likes, p.is_visible, p.created_at,
+          u.username AS author_username,
+          c.name AS community_name
+        FROM posts p
+        JOIN users u ON u.id = p.author_id
+        LEFT JOIN communities c ON c.id = p.community_id
+        WHERE p.is_visible = TRUE
+        ORDER BY p.created_at DESC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+
+      res.json({
+        data: result.rows,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages
+        }
+      });
+    } else {
+      // Comportamiento histórico: devolver últimos 50 directamente en array
+      const defaultResult = await query(`
+        SELECT
+          p.id, p.title, p.content, p.likes, p.is_visible, p.created_at,
+          u.username AS author_username,
+          c.name AS community_name
+        FROM posts p
+        JOIN users u ON u.id = p.author_id
+        LEFT JOIN communities c ON c.id = p.community_id
+        WHERE p.is_visible = TRUE
+        ORDER BY p.created_at DESC
+        LIMIT 50
+      `);
+      res.json(defaultResult.rows);
+    }
   } catch (err) {
     console.error('Error al obtener posts:', err);
     res.status(500).json({ error: 'Error interno del servidor.' });

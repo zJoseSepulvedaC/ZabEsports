@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import LoginForm from './components/LoginForm';
+import Feed from './components/Feed';
+import TeamBuilder from './components/TeamBuilder';
+import Tournaments from './components/Tournaments';
+import Profile from './components/Profile';
+import Moderation from './components/Moderation';
 
 const API_URL = 'https://zabesports-api-aje2efc6adawfyh0.eastus2-01.azurewebsites.net';
 
@@ -771,76 +777,26 @@ function App() {
     return (
       <div className="login-screen">
         <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
-          <select value={lang} onChange={(e) => setLang(e.target.value)} style={{ padding: '0.4rem 0.8rem', background: 'var(--card-bg)', color: 'var(--text-light)', border: '1px solid var(--border-color)', borderRadius: '6px' }}>
+          <select value={lang} onChange={(e) => setLang(e.target.value)} style={{ padding: '0.4rem 0.8rem', background: 'var(--card-bg)', color: 'var(--text-light)', border: '1px solid var(--border-color)', borderRadius: '6px', cursor: 'pointer' }}>
             <option value="es">🇪🇸 Español</option>
             <option value="en">🇺🇸 English</option>
           </select>
         </div>
-
-        <div className="login-card">
-          <div className="login-logo">
-            <div className="login-logo-box">ZE</div>
-            <span className="login-logo-text">ZabEsports</span>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>E-sports Hub &amp; Communities</div>
-          </div>
-
-          <h2 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '0.25rem' }}>
-            {authMode === 'login' ? t.loginTitle : t.registerTitle}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '2rem' }}>
-            {authMode === 'login' ? t.loginSubtitle : t.registerSubtitle}
-          </p>
-
-          {authError && (
-            <div style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', color: '#f87171', fontSize: '0.85rem' }}>
-              ⚠️ {authError}
-            </div>
-          )}
-
-          {authSuccess && (
-            <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.4)', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1rem', color: '#34d399', fontSize: '0.85rem' }}>
-              ✅ {authSuccess}
-            </div>
-          )}
-
-          {authMode === 'login' ? (
-            <form className="login-form" onSubmit={handleLoginSubmit}>
-              <div className="input-group">
-                <label>{t.email}</label>
-                <input type="email" className="input-field" placeholder="ejemplo@correo.com" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>{t.password}</label>
-                <input type="password" className="input-field" placeholder="••••••••" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} />
-              </div>
-              <button type="submit" className="btn-login">{t.loginBtn}</button>
-            </form>
-          ) : (
-            <form className="login-form" onSubmit={handleRegisterSubmit}>
-              <div className="input-group">
-                <label>{t.username}</label>
-                <input type="text" className="input-field" placeholder="Tu username" required value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>{t.email}</label>
-                <input type="email" className="input-field" placeholder="ejemplo@correo.com" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>{t.password}</label>
-                <input type="password" className="input-field" placeholder="Mínimo 6 caracteres" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} />
-              </div>
-              <button type="submit" className="btn-login" style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-pink))' }}>{t.registerBtn}</button>
-            </form>
-          )}
-
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2rem' }}>
-            {authMode === 'login' ? (
-              <>{t.noAccount} <a href="#" onClick={(e) => { e.preventDefault(); setAuthMode('register'); setAuthError(''); }} style={{ color: 'var(--accent-purple)', fontWeight: 'bold', textDecoration: 'none' }}>{t.registerBtn}</a></>
-            ) : (
-              <>{t.haveAccount} <a href="#" onClick={(e) => { e.preventDefault(); setAuthMode('login'); setAuthError(''); }} style={{ color: 'var(--accent-purple)', fontWeight: 'bold', textDecoration: 'none' }}>{t.loginBtn}</a></>
-            )}
-          </p>
-        </div>
+        <LoginForm 
+          authMode={authMode}
+          setAuthMode={setAuthMode}
+          emailInput={emailInput}
+          setEmailInput={setEmailInput}
+          passwordInput={passwordInput}
+          setPasswordInput={setPasswordInput}
+          usernameInput={usernameInput}
+          setUsernameInput={setUsernameInput}
+          authError={authError}
+          authSuccess={authSuccess}
+          handleLoginSubmit={handleLoginSubmit}
+          handleRegisterSubmit={handleRegisterSubmit}
+          t={t}
+        />
       </div>
     );
   }
@@ -943,460 +899,86 @@ function App() {
           </select>
         </div>
 
-        {/* HOME / FEED */}
         {activeTab === 'dashboard' && (
-          <div>
-            <header className="header">
-              <h1>{t.welcome}, {currentUser?.username}!</h1>
-              <span style={{ color: 'var(--success)', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                🟢 {t.connectAzure}
-              </span>
-            </header>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1.2fr', gap: '2rem' }}>
-              <div>
-                <h2 style={{ fontSize: '1.25rem', marginBottom: '1.25rem' }}>{t.feedTitle}</h2>
-                {loadingPosts && <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>⏳ Cargando...</div>}
-                {!loadingPosts && posts.length === 0 && (
-                  <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No hay posts disponibles. ¡Sé el primero en publicar!</div>
-                )}
-                {posts.map(post => (
-                  <article key={post.id} className="card">
-                    <h3>
-                      {post.title}
-                      {post.community_name && (
-                        <span style={{ fontSize: '0.8rem', color: 'var(--accent-purple)', background: 'rgba(139,92,246,0.1)', padding: '0.25rem 0.5rem', borderRadius: '6px', marginLeft: '0.5rem' }}>
-                          {post.community_name}
-                        </span>
-                      )}
-                    </h3>
-                    <div className="post-meta">Publicado por @{post.author_username} • {new Date(post.created_at).toLocaleDateString('es-CL')}</div>
-                    <div className="post-body">{post.content}</div>
-                    <div className="post-actions">
-                      <button className="action-btn" onClick={() => handleLike(post.id)}>❤️ Reacciones ({post.likes})</button>
-                      <button className="action-btn">💬 Comentar</button>
-                      {post.author_username === currentUser?.username && (
-                        <>
-                          <button className="action-btn" onClick={() => openEditPost(post)}>✏️ Editar</button>
-                          <button className="action-btn" style={{ color: '#ef4444' }} onClick={() => handleDeletePost(post.id)}>🗑️ Eliminar</button>
-                        </>
-                      )}
-                    </div>
-                  </article>
-                ))}
-              </div>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                  <h2 style={{ fontSize: '1.25rem', margin: 0 }}>{t.activeComms}</h2>
-                  <button className="btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} onClick={() => setShowCommModal(true)}>{t.createCommunity}</button>
-                </div>
-                <div className="card" style={{ padding: '1.25rem' }}>
-                  {loadingCommunities ? <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>⏳ Cargando...</p> : (
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      {communities.filter(c => c.is_approved || c.owner_username === currentUser?.username).map(c => (
-                        <li key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
-                          <div>
-                            <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <span>🎮 {c.name}</span>
-                              {!c.is_approved && (
-                                <span style={{ fontSize: '0.65rem', background: 'rgba(255,184,0,0.15)', color: 'var(--accent-gold)', border: '1px solid var(--accent-gold)', padding: '0.1rem 0.35rem', borderRadius: '4px', fontWeight: 'bold' }}>
-                                  {translations[lang].statusPending}
-                                </span>
-                              )}
-                            </div>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.member_count} {t.members} • {c.game}</span>
-                          </div>
-                          <button className="btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Ver</button>
-                        </li>
-                      ))}
-                      {communities.filter(c => c.is_approved || c.owner_username === currentUser?.username).length === 0 && (
-                        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{t.noCommunities}</p>
-                      )}
-                    </ul>
-                  )}
-                </div>
-                <h2 style={{ fontSize: '1.25rem', margin: '2rem 0 1.25rem' }}>{t.upcomingEvents}</h2>
-                <div className="card" style={{ padding: '1.25rem' }}>
-                  <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {tournaments.filter(t => t.is_approved && t.status === 'OPEN').slice(0, 3).map(t => (
-                      <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                        <span style={{ color: 'var(--accent-cyan)' }}>• {t.name.substring(0, 28)}...</span>
-                        <span>{new Date(t.start_date).toLocaleDateString('es-CL')}</span>
-                      </li>
-                    ))}
-                    {tournaments.filter(t => t.is_approved && t.status === 'OPEN').length === 0 && (
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No hay eventos activos.</p>
-                    )}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
+          <Feed 
+            currentUser={currentUser}
+            t={t}
+            lang={lang}
+            translations={translations}
+            loadingPosts={loadingPosts}
+            posts={posts}
+            handleLike={handleLike}
+            openEditPost={openEditPost}
+            handleDeletePost={handleDeletePost}
+            loadingCommunities={loadingCommunities}
+            communities={communities}
+            tournaments={tournaments}
+            setShowCommModal={setShowCommModal}
+          />
         )}
 
-        {/* TEAM BUILDER (RECLUTAMIENTO REAL) */}
         {activeTab === 'recruitment' && (
-          <div>
-            <header className="header">
-              <h1>TEAM BUILDER</h1>
-              <button className="btn-primary" onClick={() => setActiveTab('profile')}>{t.postulateBtn}</button>
-            </header>
-            <div className="filters-bar" style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-              <div>
-                <label style={{ marginRight: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t.positionLabel}:</label>
-                <select className="select-filter" value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)}>
-                  <option value="ALL">{t.allRoles}</option>
-                  <option value="TOP">Top</option>
-                  <option value="JUNGLE">Jungle</option>
-                  <option value="MID">Mid</option>
-                  <option value="ADC">ADC</option>
-                  <option value="SUPPORT">Support</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ marginRight: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t.rankLabel}:</label>
-                <select className="select-filter" value={selectedRank} onChange={(e) => setSelectedRank(e.target.value)}>
-                  <option value="ALL">{t.allRanks}</option>
-                  <option value="Iron">{t.rank_iron}</option>
-                  <option value="Bronze">{t.rank_bronze}</option>
-                  <option value="Silver">{t.rank_silver}</option>
-                  <option value="Gold">{t.rank_gold}</option>
-                  <option value="Platinum">{t.rank_platinum}</option>
-                  <option value="Emerald">{t.rank_emerald}</option>
-                  <option value="Diamond">{t.rank_diamond}</option>
-                  <option value="Master">{t.rank_master}</option>
-                  <option value="Grandmaster">{t.rank_grandmaster}</option>
-                  <option value="Challenger">{t.rank_challenger}</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ marginRight: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Estado Equipo:</label>
-                <select className="select-filter" value={selectedTeamStatus} onChange={(e) => setSelectedTeamStatus(e.target.value)}>
-                  <option value="ALL">Todos</option>
-                  <option value="HAS_TEAM">Con Escuadra</option>
-                  <option value="FREE_AGENT">Agente Libre</option>
-                </select>
-              </div>
-            </div>
-            <div className="player-grid">
-              {filteredPlayers.map(player => (
-                <div key={player.id} className="player-card">
-                  <span className="player-role-banner">{player.position}</span>
-                  <div className="player-avatar-container">
-                    <div className="player-avatar-inner" style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>
-                      Lvl {player.level}
-                    </div>
-                  </div>
-                  {/* Nombre clickeable para abrir el Modal de OP.GG */}
-                  <h4 
-                    onClick={() => setSelectedPlayerProfile(player)} 
-                    style={{ cursor: 'pointer', color: 'var(--text-light)', textDecoration: 'underline' }}
-                    title="Ver estadísticas en OP.GG"
-                  >
-                    {player.username}
-                  </h4>
-                  <div className="summoner-name" style={{ color: 'var(--accent-purple)', fontWeight: 'bold' }}>
-                    🎮 {player.riot_name}
-                  </div>
-                  <div style={{ margin: '0.5rem 0', fontSize: '0.85rem' }}>
-                    {player.team_name ? (
-                      <span style={{ color: 'var(--accent-cyan)', background: 'rgba(0, 240, 255, 0.1)', padding: '0.2rem 0.6rem', borderRadius: '4px', fontWeight: 'bold' }}>
-                        🛡️ Escuadra: {player.team_name}
-                      </span>
-                    ) : (
-                      <span style={{ color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.05)', padding: '0.2rem 0.6rem', borderRadius: '4px' }}>
-                        🏃 Agente Libre
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.75rem', borderRadius: '4px', display: 'inline-block', fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '1rem', color: 'var(--text-light)' }}>
-                    🏆 {player.rank}
-                  </div>
-                  <div className="player-stats">
-                    <div className="stat-item"><span className="stat-label">Win Rate</span><span className="stat-val" style={{ color: 'var(--success)' }}>{player.winrate}</span></div>
-                    <div className="stat-item"><span className="stat-label">KDA</span><span className="stat-val">{player.kda}</span></div>
-                  </div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>Availability: {player.availability}</div>
-                  <button className="btn-primary" style={{ width: '100%' }} onClick={() => { setRecruitingPlayer(player); setShowRecruitModal(true); }}>{t.recruitBtn}</button>
-                </div>
-              ))}
-              {filteredPlayers.length === 0 && (
-                <div style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-muted)', padding: '3rem' }}>
-                  {t.noPlayers}
-                </div>
-              )}
-            </div>
-          </div>
+          <TeamBuilder 
+            selectedRole={selectedRole}
+            setSelectedRole={setSelectedRole}
+            selectedRank={selectedRank}
+            setSelectedRank={setSelectedRank}
+            selectedTeamStatus={selectedTeamStatus}
+            setSelectedTeamStatus={setSelectedTeamStatus}
+            filteredPlayers={filteredPlayers}
+            setSelectedPlayerProfile={setSelectedPlayerProfile}
+            setRecruitingPlayer={setRecruitingPlayer}
+            setShowRecruitModal={setShowRecruitModal}
+            setActiveTab={setActiveTab}
+            t={t}
+          />
         )}
 
-        {/* TORNEOS (CRUD REAL) */}
         {activeTab === 'tournaments' && (
-          <div>
-            <header className="header">
-              <h1>Global Elite Showdown</h1>
-              <button className="btn-primary" onClick={() => setShowTourneyModal(true)}>{t.createTournament}</button>
-            </header>
-            {loadingTournaments && <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>⏳ Cargando...</div>}
-            <div className="tournament-list">
-              {tournaments.map(t => (
-                <div key={t.id} className="tournament-row">
-                  <div className="tournament-info">
-                    <h4>
-                      {t.name}
-                      <span className={`status-badge ${t.is_approved ? 'open' : 'badge-pending'}`} style={{ marginLeft: '1rem' }}>
-                        {t.is_approved ? 'APROBADO' : 'PENDIENTE'}
-                      </span>
-                    </h4>
-                    <p style={{ marginTop: '0.4rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>{t.description}</p>
-                    <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      <span>📅 {new Date(t.start_date).toLocaleDateString('es-CL')}</span>
-                      <span>👥 {t.registered_teams}/{t.max_teams} {translations[lang].registeredTeams}</span>
-                      {t.prize_pool && <span>🏆 {t.prize_pool}</span>}
-                    </div>
-                  </div>
-                  <div>
-                    {t.is_approved
-                      ? <button onClick={() => setRegisteringTourney(t.id)} className="btn-primary" style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-pink))' }}>Inscribir Escuadra</button>
-                      : <button className="btn-primary" style={{ opacity: 0.5, cursor: 'not-allowed' }} disabled>Bloqueado</button>
-                    }
-                  </div>
-                </div>
-              ))}
-              {!loadingTournaments && tournaments.length === 0 && (
-                <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>{t.noTournaments}</div>
-              )}
-            </div>
-          </div>
+          <Tournaments 
+            tournaments={tournaments}
+            loadingTournaments={loadingTournaments}
+            setShowTourneyModal={setShowTourneyModal}
+            setRegisteringTourney={setRegisteringTourney}
+            translations={translations}
+            lang={lang}
+            t={t}
+          />
         )}
 
-        {/* MI PERFIL & VINCULACIÓN RIOT */}
         {activeTab === 'profile' && (
-          <div>
-            <header className="header">
-              <h1>{t.profile}</h1>
-            </header>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '2rem' }}>
-              <div className="card" style={{ padding: '2rem', textAlign: 'center' }}>
-                <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold', margin: '0 auto 1.5rem' }}>
-                  {currentUser?.username?.charAt(0).toUpperCase()}
-                </div>
-                <h3 style={{ fontSize: '1.4rem', marginBottom: '0.25rem' }}>{currentUser?.username}</h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>{currentUser?.email}</p>
-                
-                <hr style={{ borderColor: 'var(--border-color)', margin: '1.5rem 0' }} />
-                
-                {currentUser?.riot_summoner_name ? (
-                  <div>
-                    <span style={{ color: 'var(--success)', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                      {t.riotLinkedStatus}
-                    </span>
-                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>RIOT ID</div>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--accent-cyan)' }}>🎮 {currentUser.riot_summoner_name}</div>
-                      
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>RANGO LOL</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 'bold' }}>🏆 {currentUser.lol_rank}</div>
-                      
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>NIVEL</div>
-                      <div style={{ fontSize: '0.9rem' }}>⭐ {currentUser.lol_summoner_level}</div>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <span style={{ color: '#ef4444', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                      {t.riotUnlinkedStatus}
-                    </span>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {t.riotUnlinkedDesc}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Proceso de Vinculación */}
-              <div className="card" style={{ padding: '2rem' }}>
-                <h3 style={{ marginBottom: '1rem' }}>{t.riotLinkTitle}</h3>
-                
-                {linkError && (
-                  <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '8px', padding: '0.75rem 1rem', marginBottom: '1.25rem', color: '#f87171', fontSize: '0.85rem' }}>
-                    ⚠️ {linkError}
-                  </div>
-                )}
-
-                {linkingState === 'idle' && (
-                  <form onSubmit={handleRiotLinkStart}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem', lineHeight: '1.4' }}>
-                      {t.riotLinkDesc}
-                    </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: '1rem' }}>
-                      <div className="input-group">
-                        <label>{t.riotNameInput}</label>
-                        <input type="text" className="input-field" placeholder="Ej: Zabat" required value={riotGameName} onChange={(e) => setRiotGameName(e.target.value)} />
-                      </div>
-                      <div className="input-group">
-                        <label>{t.riotTagInput}</label>
-                        <input type="text" className="input-field" placeholder="Ej: sun" required value={riotTagLine} onChange={(e) => setRiotTagLine(e.target.value)} />
-                      </div>
-                    </div>
-                    <div className="input-group">
-                      <label>{t.riotRegionLabel}</label>
-                      <select className="select-filter" style={{ width: '100%', padding: '0.75rem' }} value={riotRegion} onChange={(e) => setRiotRegion(e.target.value)}>
-                        <option value="LA2">LAS (Latin America South)</option>
-                        <option value="LA1">LAN (Latin America North)</option>
-                        <option value="NA1">NA (North America)</option>
-                        <option value="BR1">BR (Brazil)</option>
-                        <option value="EUW1">EUW (Europe West)</option>
-                      </select>
-                    </div>
-                    <button type="submit" className="btn-primary" style={{ width: '100%', padding: '0.75rem', marginTop: '1rem' }}>
-                      {t.connectBtn}
-                    </button>
-                  </form>
-                )}
-
-                {linkingState === 'linking' && (
-                  <div style={{ textAlign: 'center', padding: '2rem' }}>
-                    <div style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>⏳ Conectando...</div>
-                  </div>
-                )}
-
-                {linkingState === 'verifying' && (
-                  <div>
-                    <h4 style={{ color: 'var(--accent-purple)', marginBottom: '0.5rem' }}>✓ {t.connectBtn}: {linkInfo?.gameName}#{linkInfo?.tagLine}</h4>
-                    <div style={{ background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
-                      <p style={{ fontSize: '0.9rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text-light)' }}>
-                        🔒 {t.verifyIconTitle}:
-                      </p>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', marginBottom: '1rem' }}>
-                        {t.verifyIconDesc}
-                      </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '0.75rem 1rem', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
-                        <img 
-                          src={`https://ddragon.leagueoflegends.com/cdn/14.13.1/img/profileicon/${linkInfo?.targetIconId}.png`} 
-                          alt={linkInfo?.targetIconName} 
-                          style={{ width: '64px', height: '64px', borderRadius: '8px', border: '2px solid var(--accent-purple)' }} 
-                        />
-                        <div>
-                          <div style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>{linkInfo?.targetIconName}</div>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {linkInfo?.targetIconId}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <button className="btn-primary" onClick={handleRiotLinkVerify} style={{ flex: 1, padding: '0.75rem' }}>
-                        {t.verifyBtn}
-                      </button>
-                      <button className="btn-primary" onClick={() => setLinkingState('idle')} style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                        {t.cancelBtn}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {linkingState === 'success' && (
-                  <div style={{ textAlign: 'center', padding: '2rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
-                    <h3 style={{ color: 'var(--success)', marginBottom: '0.5rem' }}>{t.linkSuccess}</h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-                      {t.linkSuccessDesc}
-                    </p>
-                    <button className="btn-primary" onClick={() => setLinkingState('idle')}>
-                      {t.linkAnother}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* MIS ESCUADRAS (TEAMS) */}
-            <div className="card" style={{ padding: '2rem', marginTop: '2rem' }}>
-              <h3 style={{ marginBottom: '1rem' }}>Mis Escuadras</h3>
-              <form onSubmit={handleCreateTeam} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-                <input 
-                  type="text" 
-                  className="input-field" 
-                  placeholder="Nombre de la nueva escuadra" 
-                  value={newTeamName} 
-                  onChange={(e) => setNewTeamName(e.target.value)} 
-                  required 
-                  style={{ flex: 1 }}
-                />
-                <button type="submit" className="btn-primary" style={{ whiteSpace: 'nowrap' }}>+ Crear Equipo</button>
-              </form>
-
-              {myTeams.length === 0 ? (
-                <p style={{ color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic' }}>
-                  No tienes escuadras aún. ¡Crea una para empezar a reclutar jugadores!
-                </p>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
-                  {myTeams.map(team => (
-                    <div key={team.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.25rem' }}>
-                      <h4 style={{ color: 'var(--accent-purple)', marginBottom: '0.25rem' }}>{team.name}</h4>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        👥 {team.member_count} {String(team.member_count) === '1' ? 'Miembro' : 'Miembros'}
-                      </p>
-                      <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-                        {team.members && team.members.map((member, i) => (
-                           <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(139,92,246,0.15)', color: 'var(--accent-purple)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 'bold' }}>@{member}</span>
-                        ))}
-                      </div>
-                      {team.captain_id === currentUser?.id && (
-                        <span className="role-badge" style={{ marginTop: '0.5rem', display: 'inline-block', fontSize: '0.7rem' }}>Capitán</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-          </div>
+          <Profile 
+            currentUser={currentUser}
+            riotGameName={riotGameName}
+            setRiotGameName={setRiotGameName}
+            riotTagLine={riotTagLine}
+            setRiotTagLine={setRiotTagLine}
+            riotRegion={riotRegion}
+            setRiotRegion={setRiotRegion}
+            linkingState={linkingState}
+            setLinkingState={setLinkingState}
+            linkInfo={linkInfo}
+            setLinkInfo={setLinkInfo}
+            linkError={linkError}
+            setLinkError={setLinkError}
+            myTeams={myTeams}
+            newTeamName={newTeamName}
+            setNewTeamName={setNewTeamName}
+            handleRiotLinkStart={handleRiotLinkStart}
+            handleRiotLinkVerify={handleRiotLinkVerify}
+            handleCreateTeam={handleCreateTeam}
+            t={t}
+          />
         )}
 
-        {/* MODERACIÓN */}
         {activeTab === 'moderation' && (
-          <div>
-            <header className="header"><h1>{t.moderationPanel}</h1></header>
-            <div className="card">
-              <h3>{t.pendingComms}</h3>
-              <table className="moderation-table">
-                <thead><tr><th>{t.nameLabel}</th><th>{t.gameLabel}</th><th>Owner</th><th>{t.members}</th><th>Estado</th><th>Acciones</th></tr></thead>
-                <tbody>
-                  {communities.map(c => (
-                    <tr key={c.id}>
-                      <td>{c.name}</td><td>{c.game}</td><td>@{c.owner_username}</td><td>{c.member_count}</td>
-                      <td><span className={`badge-status ${c.is_approved ? 'badge-approved' : 'badge-pending'}`}>{c.is_approved ? t.statusApproved : t.statusPending}</span></td>
-                      <td>
-                        {!c.is_approved
-                          ? <><button className="btn-small btn-approve" onClick={() => handleApproveCommunity(c.id)}>{t.approve}</button><button className="btn-small btn-reject">{t.reject}</button></>
-                          : <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t.completed}</span>
-                        }
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="card" style={{ marginTop: '2rem' }}>
-              <h3>{t.pendingTourneys}</h3>
-              <table className="moderation-table">
-                <thead><tr><th>Torneo</th><th>Organizador</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
-                <tbody>
-                  {tournaments.map(tData => (
-                    <tr key={tData.id}>
-                      <td>{tData.name}</td><td>@{tData.organizer_username}</td><td>{new Date(tData.start_date).toLocaleDateString('es-CL')}</td>
-                      <td><span className={`badge-status ${tData.is_approved ? 'badge-approved' : 'badge-pending'}`}>{tData.is_approved ? t.statusApproved : t.statusPending}</span></td>
-                      <td>
-                        {!tData.is_approved
-                          ? <><button className="btn-small btn-approve" onClick={() => handleApproveTournament(tData.id)}>{t.approve}</button><button className="btn-small btn-reject">{t.reject}</button></>
-                          : <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t.completed}</span>
-                        }
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <Moderation 
+            communities={communities}
+            tournaments={tournaments}
+            handleApproveCommunity={handleApproveCommunity}
+            handleApproveTournament={handleApproveTournament}
+            t={t}
+          />
         )}
       </main>
 
