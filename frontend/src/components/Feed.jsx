@@ -1,4 +1,56 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+
+// Subcomponente de comentarios asíncronos tipo Facebook
+function PostComments({ postId, handleComment, handleViewComments, API_URL }) {
+  const [comments, setComments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchPostComments = () => {
+    fetch(`${API_URL}/api/posts/${postId}/comments`)
+      .then(r => r.json())
+      .then(data => setComments(Array.isArray(data) ? data : []))
+      .catch(() => setComments([]))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchPostComments();
+    
+    // Escuchar actualizaciones (cada vez que el usuario agregue un comentario a este post)
+    const interval = setInterval(fetchPostComments, 5000);
+    return () => clearInterval(interval);
+  }, [postId]);
+
+  return (
+    <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.75rem' }}>
+      <h4 style={{ fontSize: '0.8rem', marginBottom: '0.5rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        💬 Comentarios Destacados
+      </h4>
+      {loading && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>⏳ Cargando comentarios...</p>}
+      {!loading && comments.length === 0 && (
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Sin comentarios aún. ¡Sé el primero!</p>
+      )}
+      {!loading && comments.slice(0, 3).map(c => (
+        <div 
+          key={c.id} 
+          style={{ fontSize: '0.85rem', background: 'rgba(255,255,255,0.02)', padding: '0.5rem 0.75rem', borderRadius: '6px', marginBottom: '0.4rem', border: '1px solid rgba(255,255,255,0.02)' }}
+        >
+          <span style={{ fontWeight: 'bold', color: 'var(--accent-cyan)' }}>@{c.author_username}: </span>
+          <span style={{ color: 'var(--text-light)' }}>{c.content}</span>
+        </div>
+      ))}
+      {comments.length > 3 && (
+        <button 
+          className="action-btn" 
+          style={{ fontSize: '0.75rem', padding: '0.2rem 0', color: 'var(--accent-purple)', fontWeight: 'bold', background: 'none', border: 'none', cursor: 'pointer' }}
+          onClick={() => handleViewComments(postId)}
+        >
+          Ver los {comments.length} comentarios
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function Feed({
   currentUser,
@@ -37,7 +89,6 @@ export default function Feed({
     return true;
   });
 
-  // Obtener nombre del filtro actual
   const activeFilterName = () => {
     if (filterCommunityId) {
       const comm = communities.find(c => c.id === filterCommunityId);
@@ -51,7 +102,6 @@ export default function Feed({
   };
 
   const handleOpenCreatePost = () => {
-    // Si hay un filtro activo, pre-vincular al crear
     if (filterCommunityId) {
       setNewPostCommunityId(filterCommunityId);
       setNewPostTournamentId('');
@@ -64,6 +114,9 @@ export default function Feed({
     }
     setShowPostModal(true);
   };
+
+  // URL del API
+  const API_URL = 'https://zabesports-api-aje2efc6adawfyh0.eastus2-01.azurewebsites.net';
 
   return (
     <div>
@@ -133,6 +186,7 @@ export default function Feed({
                 Publicado por @{post.author_username} • {new Date(post.created_at).toLocaleDateString('es-CL')}
               </div>
               <div className="post-body" style={{ whiteSpace: 'pre-wrap' }}>{post.content}</div>
+              
               <div className="post-actions">
                 <button className="action-btn" onClick={() => handleLike(post.id)}>
                   👍 Likes ({post.likes})
@@ -165,6 +219,14 @@ export default function Feed({
                   </>
                 )}
               </div>
+
+              {/* RENDERIZADO DE COMENTARIOS DESTACADOS ABAJO */}
+              <PostComments 
+                postId={post.id} 
+                handleComment={handleComment} 
+                handleViewComments={handleViewComments} 
+                API_URL={API_URL} 
+              />
             </article>
           ))}
         </div>

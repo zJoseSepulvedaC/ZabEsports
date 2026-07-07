@@ -778,6 +778,13 @@ function App() {
 
   const handleLike = async (postId) => {
     if (!token) return;
+    
+    // Obtener valor previo por si falla la llamada
+    const previousPosts = [...posts];
+    
+    // Actualización optimista inmediata en interfaz
+    setPosts(prevPosts => prevPosts.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
+    
     try {
       const res = await fetch(`${API_URL}/api/posts/${postId}/like`, {
         method: 'POST',
@@ -785,10 +792,15 @@ function App() {
       });
       if (res.ok) {
         const data = await res.json();
-        setPosts(posts.map(p => p.id === postId ? { ...p, likes: data.post.likes } : p));
+        // Sincronizar con el valor oficial del servidor
+        setPosts(prevPosts => prevPosts.map(p => p.id === postId ? { ...p, likes: data.post.likes } : p));
+      } else {
+        // Revertir si el servidor responde con error (ej: ya dio like antes)
+        setPosts(previousPosts);
       }
     } catch {
-      setPosts(posts.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
+      // Revertir si hay error de red
+      setPosts(previousPosts);
     }
   };
 

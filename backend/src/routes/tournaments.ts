@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Response, Request } from 'express';
 import { query } from '../db/pool';
 import { authMiddleware, requireRole, AuthRequest } from '../middleware/authMiddleware';
 
@@ -273,6 +273,45 @@ router.delete('/:id/register', authMiddleware, async (req: AuthRequest, res: Res
   } catch (err) {
     console.error('Error al anular inscripción:', err);
     res.status(500).json({ error: 'Error al anular inscripción.' });
+  }
+});
+
+// GET /api/tournaments/:id/teams — Obtener escuadras inscritas e integrantes (estilo Battlefy)
+router.get('/:id/teams', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await query(`
+      SELECT 
+        tr.id AS registration_id,
+        t.id AS team_id,
+        t.name AS team_name,
+        u.username AS captain_username,
+        u.lol_rank AS captain_rank,
+        u.lol_summoner_level AS captain_level
+      FROM tournament_registrations tr
+      JOIN teams t ON t.id = tr.team_id
+      LEFT JOIN users u ON u.id = t.captain_id
+      WHERE tr.tournament_id = $1
+    `, [req.params.id]);
+
+    const teams = [];
+    for (const row of result.rows) {
+      const members = await query(`
+        SELECT u.id, u.username, u.lol_rank, u.lol_summoner_level, u.riot_game_name, u.riot_tag_line
+        FROM team_members tm
+        JOIN users u ON u.id = tm.user_id
+        WHERE tm.team_id = $1
+      `, [row.team_id]);
+
+      teams.push({
+        ...row,
+        members: members.rows
+      });
+    }
+
+    res.json(teams);
+  } catch (err) {
+    console.error('Error al obtener escuadras inscritas:', err);
+    res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });
 
