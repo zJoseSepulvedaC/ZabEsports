@@ -15,24 +15,7 @@ import reportsRouter     from './routes/reports';
 
 dotenv.config();
 
-// Migración autoejecutable para columnas de reportes y posts
-async function runMigrations() {
-  try {
-    await pool.query(`
-      ALTER TABLE reports ADD COLUMN IF NOT EXISTS reported_community_id UUID REFERENCES communities(id) ON DELETE CASCADE;
-    `);
-    await pool.query(`
-      ALTER TABLE reports ADD COLUMN IF NOT EXISTS reported_tournament_id UUID REFERENCES tournaments(id) ON DELETE CASCADE;
-    `);
-    await pool.query(`
-      ALTER TABLE posts ADD COLUMN IF NOT EXISTS tournament_id UUID REFERENCES tournaments(id) ON DELETE CASCADE;
-    `);
-    console.log('✅ Migraciones de base de datos ejecutadas correctamente (reported_community_id, reported_tournament_id y tournament_id en posts).');
-  } catch (err) {
-    console.error('⚠️ Error al ejecutar migraciones de base de datos:', err);
-  }
-}
-runMigrations();
+// Las migraciones de base de datos se ejecutan en el despliegue inicial y se remueven de aquí para evitar bloqueos por concurrencia en Azure.
 
 const app = express();
 const PORT = process.env.PORT || 5000;
