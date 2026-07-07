@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Response, Request } from 'express';
 import { query } from '../db/pool';
 import { authMiddleware, AuthRequest } from '../middleware/authMiddleware';
 
@@ -81,6 +81,45 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
     res.status(201).json({ message: 'Post creado.', post: result.rows[0] });
   } catch (err) {
     console.error('Error al crear post:', err);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// POST /api/posts/:id/comment — Agregar un comentario a un post (requiere auth)
+router.post('/:id/comment', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { content } = req.body;
+  if (!content) {
+    res.status(400).json({ error: 'El contenido del comentario es requerido.' });
+    return;
+  }
+  try {
+    const result = await query(`
+      INSERT INTO interactions (post_id, user_id, type, content)
+      VALUES ($1, $2, 'comment', $3)
+      RETURNING id, content, created_at
+    `, [req.params.id, req.user!.id, content]);
+
+    res.status(201).json({ message: 'Comentario agregado.', comment: result.rows[0] });
+  } catch (err) {
+    console.error('Error al agregar comentario:', err);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// GET /api/posts/:id/comments — Obtener comentarios de un post
+router.get('/:id/comments', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await query(`
+      SELECT i.id, i.content, i.created_at, u.username AS author_username
+      FROM interactions i
+      JOIN users u ON u.id = i.user_id
+      WHERE i.post_id = $1 AND i.type = 'comment'
+      ORDER BY i.created_at ASC
+    `, [req.params.id]);
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener comentarios:', err);
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
 });

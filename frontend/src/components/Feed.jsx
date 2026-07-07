@@ -8,6 +8,9 @@ export default function Feed({
   loadingPosts,
   posts,
   handleLike,
+  handleComment,
+  handleViewComments,
+  handleReport,
   openEditPost,
   handleDeletePost,
   loadingCommunities,
@@ -132,9 +135,21 @@ export default function Feed({
               <div className="post-body" style={{ whiteSpace: 'pre-wrap' }}>{post.content}</div>
               <div className="post-actions">
                 <button className="action-btn" onClick={() => handleLike(post.id)}>
-                  👍 Reacciones ({post.likes})
+                  👍 Likes ({post.likes})
                 </button>
-                <button className="action-btn">💬 Comentar</button>
+                <button className="action-btn" onClick={() => handleComment(post.id)}>
+                  💬 Comentar
+                </button>
+                <button className="action-btn" onClick={() => handleViewComments(post.id)}>
+                  👁️ Ver Comentarios
+                </button>
+                <button 
+                  className="action-btn" 
+                  style={{ color: '#ef4444' }} 
+                  onClick={() => handleReport({ postId: post.id })}
+                >
+                  ⚠️ Reportar
+                </button>
                 {post.author_username === currentUser?.username && (
                   <>
                     <button className="action-btn" onClick={() => openEditPost(post)}>
@@ -192,16 +207,26 @@ export default function Feed({
                           {c.member_count} {t.members} • {c.game}
                         </span>
                       </div>
-                      <button 
-                        className="btn-primary" 
-                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', backgroundColor: filterCommunityId === c.id ? 'var(--accent-purple)' : '' }}
-                        onClick={() => {
-                          setFilterCommunityId(c.id);
-                          setFilterTournamentId('');
-                        }}
-                      >
-                        Ver
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <button 
+                          className="btn-primary" 
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', backgroundColor: filterCommunityId === c.id ? 'var(--accent-purple)' : '' }}
+                          onClick={() => {
+                            setFilterCommunityId(c.id);
+                            setFilterTournamentId('');
+                          }}
+                        >
+                          Ver
+                        </button>
+                        <button 
+                          className="btn-primary" 
+                          style={{ padding: '0.4rem', fontSize: '0.8rem', background: 'none', border: '1px solid #ef4444', color: '#ef4444' }}
+                          title="Reportar Comunidad"
+                          onClick={() => handleReport({ communityId: c.id })}
+                        >
+                          ⚠️
+                        </button>
+                      </div>
                     </li>
                   ))}
                 {communities.filter(c => c.is_approved || c.owner_username === currentUser?.username).length === 0 && (
@@ -230,11 +255,20 @@ export default function Feed({
                         setFilterCommunityId('');
                       }}
                     >
-                      • {t.name.substring(0, 24)}...
+                      • {t.name.substring(0, 20)}...
                     </span>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      {new Date(t.start_date).toLocaleDateString('es-CL')}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {new Date(t.start_date).toLocaleDateString('es-CL')}
+                      </span>
+                      <button 
+                        style={{ padding: '0.2rem 0.4rem', fontSize: '0.7rem', background: 'none', border: '1px solid #ef4444', color: '#ef4444', cursor: 'pointer', borderRadius: '4px' }}
+                        title="Reportar Torneo"
+                        onClick={() => handleReport({ tournamentId: t.id })}
+                      >
+                        ⚠️
+                      </button>
+                    </div>
                   </li>
                 ))}
               {tournaments.filter(t => t.is_approved && t.status === 'OPEN').length === 0 && (

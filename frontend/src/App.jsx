@@ -776,6 +776,71 @@ function App() {
     }
   };
 
+  const handleComment = async (postId) => {
+    if (!token) return;
+    const content = window.prompt("Escribe tu comentario:");
+    if (!content) return;
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ content })
+      });
+      if (res.ok) {
+        window.alert("¡Comentario publicado con éxito!");
+        fetchPosts();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleViewComments = async (postId) => {
+    try {
+      const res = await fetch(`${API_URL}/api/posts/${postId}/comments`);
+      if (res.ok) {
+        const comments = await res.json();
+        if (comments.length === 0) {
+          window.alert("No hay comentarios aún.");
+        } else {
+          const formatted = comments.map(c => `@${c.author_username}: ${c.content}`).join('\n');
+          window.alert(`Comentarios:\n\n${formatted}`);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReport = async ({ postId, communityId, tournamentId }) => {
+    if (!token) return;
+    const reason = window.prompt("Escribe el motivo del reporte:");
+    if (!reason) return;
+    try {
+      const res = await fetch(`${API_URL}/api/reports`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          reported_post_id: postId || null,
+          reported_community_id: communityId || null,
+          reported_tournament_id: tournamentId || null,
+          reason
+         })
+      });
+      if (res.ok) {
+        window.alert("¡Reporte enviado con éxito! El equipo de moderación lo revisará.");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleApproveCommunity = async (id) => {
     if (!token) return;
     try {
@@ -951,6 +1016,9 @@ function App() {
             loadingPosts={loadingPosts}
             posts={posts}
             handleLike={handleLike}
+            handleComment={handleComment}
+            handleViewComments={handleViewComments}
+            handleReport={handleReport}
             openEditPost={openEditPost}
             handleDeletePost={handleDeletePost}
             loadingCommunities={loadingCommunities}
