@@ -203,4 +203,77 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
   }
 });
 
+// PUT /api/tournaments/:id — Actualizar torneo (solo organizador o admin)
+router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { name, description, max_teams, prize_pool, start_date, status } = req.body;
+  try {
+    const check = await query('SELECT organizer_id FROM tournaments WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'Torneo no encontrado.' });
+      return;
+    }
+    if (check.rows[0].organizer_id !== req.user!.id && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'No tienes permisos para editar este torneo.' });
+      return;
+    }
+
+    const result = await query(
+      `UPDATE tournaments SET
+        name = COALESCE($1, name),
+        description = COALESCE($2, description),
+        max_teams = COALESCE($3, max_teams),
+        prize_pool = COALESCE($4, prize_pool),
+        start_date = COALESCE($5, start_date),
+        status = COALESCE($6, status),
+        updated_at = NOW()
+       WHERE id = $7 RETURNING id, name, description, status`,
+      [name, description, max_teams ? parseInt(max_teams) : null, prize_pool, start_date ? new Date(start_date) : null, status, id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al actualizar torneo:', err);
+    res.status(500).json({ error: 'Error al actualizar torneo.' });
+  }
+});
+
+// DELETE /api/tournaments/:id — Eliminar torneo (solo organizador o admin)
+router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const check = await query('SELECT organizer_id FROM tournaments WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'Torneo no encontrado.' });
+      return;
+    }
+    if (check.rows[0].organizer_id !== req.user!.id && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'No tienes permisos para eliminar este torneo.' });
+      return;
+    }
+
+    await query('DELETE FROM tournaments WHERE id = $1', [id]);
+    res.json({ message: 'Torneo eliminado con éxito.' });
+  } catch (err) {
+    console.error('Error al eliminar torneo:', err);
+    res.status(500).json({ error: 'Error al eliminar torneo.' });
+  }
+});
+
+// DELETE /api/tournaments/:id/register — Anular inscripción / salir de un torneo
+router.delete('/:id/register', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const check = await query('SELECT id FROM tournament_registrations WHERE tournament_id = $1 AND registered_by = $2', [id, req.user!.id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'No estás inscrito en este torneo.' });
+      return;
+    }
+    await query('DELETE FROM tournament_registrations WHERE tournament_id = $1 AND registered_by = $2', [id, req.user!.id]);
+    res.json({ message: 'Inscripción anulada con éxito.' });
+  } catch (err) {
+    console.error('Error al anular inscripción:', err);
+    res.status(500).json({ error: 'Error al anular inscripción.' });
+  }
+});
+
 export default router;

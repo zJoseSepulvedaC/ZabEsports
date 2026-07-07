@@ -178,4 +178,88 @@ router.patch(
   }
 );
 
+// PUT /api/communities/:id — Actualizar comunidad (solo dueño o admin)
+router.put('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { name, description, game } = req.body;
+  try {
+    const check = await query('SELECT owner_id FROM communities WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'Comunidad no encontrada.' });
+      return;
+    }
+    if (check.rows[0].owner_id !== req.user!.id && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'No tienes permisos para editar esta comunidad.' });
+      return;
+    }
+
+    const result = await query(
+      `UPDATE communities SET name = COALESCE($1, name), description = COALESCE($2, description), game = COALESCE($3, game), updated_at = NOW()
+       WHERE id = $4 RETURNING id, name, description, game, owner_id`,
+      [name, description, game, id]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al actualizar comunidad:', err);
+    res.status(500).json({ error: 'Error al actualizar comunidad.' });
+  }
+});
+
+// DELETE /api/communities/:id — Eliminar comunidad (solo dueño o admin)
+router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const check = await query('SELECT owner_id FROM communities WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'Comunidad no encontrada.' });
+      return;
+    }
+    if (check.rows[0].owner_id !== req.user!.id && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'No tienes permisos para eliminar esta comunidad.' });
+      return;
+    }
+
+    await query('DELETE FROM communities WHERE id = $1', [id]);
+    res.json({ message: 'Comunidad eliminada con éxito.' });
+  } catch (err) {
+    console.error('Error al eliminar comunidad:', err);
+    res.status(500).json({ error: 'Error al eliminar comunidad.' });
+  }
+});
+
+// POST /api/communities/:id/join — Unirse a comunidad
+router.post('/:id/join', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const check = await query('SELECT is_approved FROM communities WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'Comunidad no encontrada.' });
+      return;
+    }
+    await query(
+      'INSERT INTO community_members (community_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+      [id, req.user!.id]
+    );
+    res.json({ message: 'Te has unido a la comunidad.' });
+  } catch (err) {
+    console.error('Error al unirse a comunidad:', err);
+    res.status(500).json({ error: 'Error al unirse a la comunidad.' });
+  }
+});
+
+// DELETE /api/communities/:id/leave — Salir de la comunidad
+router.delete('/:id/leave', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  try {
+    await query(
+      'DELETE FROM community_members WHERE community_id = $1 AND user_id = $2',
+      [id, req.user!.id]
+    );
+    res.json({ message: 'Has salido de la comunidad.' });
+  } catch (err) {
+    console.error('Error al salir de la comunidad:', err);
+    res.status(500).json({ error: 'Error al salir de la comunidad.' });
+  }
+});
+
 export default router;
