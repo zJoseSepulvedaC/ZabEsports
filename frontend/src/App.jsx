@@ -850,10 +850,23 @@ function App() {
     }
   };
 
-  const handleOpenReport = (type, targetId) => {
-    setReportType(type);
-    setReportTargetId(targetId);
+  const [reportSuccess, setReportSuccess] = useState(false);
+
+  const handleOpenReport = (args) => {
+    if (!args) return;
+    const { postId, communityId, tournamentId } = args;
+    if (postId) {
+      setReportType('post');
+      setReportTargetId(postId);
+    } else if (communityId) {
+      setReportType('community');
+      setReportTargetId(communityId);
+    } else if (tournamentId) {
+      setReportType('tournament');
+      setReportTargetId(tournamentId);
+    }
     setReportReason('');
+    setReportSuccess(false);
     setShowReportModal(true);
   };
 
@@ -875,9 +888,12 @@ function App() {
         })
       });
       if (res.ok) {
-        setShowReportModal(false);
-        setReportReason('');
-        window.alert("¡Reporte enviado con éxito! El equipo de moderación lo revisará.");
+        setReportSuccess(true);
+        setTimeout(() => {
+          setShowReportModal(false);
+          setReportReason('');
+          setReportSuccess(false);
+        }, 2000);
       }
     } catch (err) {
       console.error('Error al reportar:', err);
@@ -1578,27 +1594,37 @@ function App() {
       {showReportModal && (
         <div className="modal-overlay" onClick={() => setShowReportModal(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <h2>Reportar Contenido</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
-              Ayúdanos a mantener la comunidad limpia. Por favor indica la razón del reporte.
-            </p>
-            <form onSubmit={handleReportSubmit}>
-              <div className="input-group">
-                <label>Motivo del Reporte</label>
-                <textarea 
-                  className="input-field" 
-                  placeholder="Ej: Lenguaje ofensivo, spam, etc."
-                  style={{ minHeight: '100px' }} 
-                  required 
-                  value={reportReason} 
-                  onChange={(e) => setReportReason(e.target.value)} 
-                />
+            {reportSuccess ? (
+              <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+                <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>✅</span>
+                <h3 style={{ color: 'var(--success)', marginBottom: '0.5rem' }}>¡Reporte Enviado!</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>El equipo de moderación lo revisará a la brevedad.</p>
               </div>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                <button type="submit" className="btn-primary" style={{ flex: 1, backgroundColor: '#ef4444' }}>Enviar Reporte</button>
-                <button type="button" className="btn-primary" style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} onClick={() => setShowReportModal(false)}>{t.cancelBtn}</button>
-              </div>
-            </form>
+            ) : (
+              <>
+                <h2>Reportar Contenido</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+                  Ayúdanos a mantener la comunidad limpia. Por favor indica la razón del reporte.
+                </p>
+                <form onSubmit={handleReportSubmit}>
+                  <div className="input-group">
+                    <label>Motivo del Reporte</label>
+                    <textarea 
+                      className="input-field" 
+                      placeholder="Ej: Lenguaje ofensivo, spam, etc."
+                      style={{ minHeight: '100px' }} 
+                      required 
+                      value={reportReason} 
+                      onChange={(e) => setReportReason(e.target.value)} 
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                    <button type="submit" className="btn-primary" style={{ flex: 1, backgroundColor: '#ef4444' }}>Enviar Reporte</button>
+                    <button type="button" className="btn-primary" style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} onClick={() => setShowReportModal(false)}>{t.cancelBtn}</button>
+                  </div>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}

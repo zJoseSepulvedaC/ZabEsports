@@ -80,7 +80,7 @@ export default function Tournaments({
                     className="btn-primary"
                     style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-light)' }}
                   >
-                    {isExpanded ? '🔼 Ocultar Rosters' : '🛡️ Ver Equipos (Battlefy)'}
+                    {isExpanded ? '🔼 Ocultar Rosters' : '🛡️ Ver Equipos'}
                   </button>
                   {tourney.is_approved ? (
                     <button 
@@ -98,11 +98,11 @@ export default function Tournaments({
                 </div>
               </div>
 
-              {/* DETALLE ESTILO BATTLEFY - EQUIPOS Y JUGADORES */}
+              {/* DETALLE DE EQUIPOS Y JUGADORES */}
               {isExpanded && (
                 <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                   <h5 style={{ fontSize: '0.9rem', color: 'var(--accent-cyan)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    🛡️ Roster Oficial del Torneo (Battlefy Mode)
+                    🛡️ Roster Oficial del Torneo
                   </h5>
                   {loadingTeams && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>⏳ Consultando escuadras de la Grieta del Invocador...</p>}
                   {!loadingTeams && registeredTeams.length === 0 && (
