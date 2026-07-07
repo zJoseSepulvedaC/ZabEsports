@@ -12,19 +12,20 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
       const limit = parseInt(req.query.limit as string) || 10;
       const offset = (page - 1) * limit;
 
-      const totalResult = await query('SELECT COUNT(*)::int AS count FROM posts WHERE is_visible = TRUE');
+      const totalResult = await query('SELECT COUNT(*)::int AS count FROM posts');
       const total = totalResult.rows[0].count;
       const totalPages = Math.ceil(total / limit);
 
       const result = await query(`
         SELECT
-          p.id, p.title, p.content, p.likes, p.is_visible, p.created_at,
+          p.id, p.title, p.content, p.likes, p.created_at, p.community_id, p.tournament_id,
           u.username AS author_username,
-          c.name AS community_name
+          c.name AS community_name,
+          t.name AS tournament_name
         FROM posts p
         JOIN users u ON u.id = p.author_id
         LEFT JOIN communities c ON c.id = p.community_id
-        WHERE p.is_visible = TRUE
+        LEFT JOIN tournaments t ON t.id = p.tournament_id
         ORDER BY p.created_at DESC
         LIMIT $1 OFFSET $2
       `, [limit, offset]);
@@ -42,13 +43,14 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
       // Comportamiento histórico: devolver últimos 50 directamente en array
       const defaultResult = await query(`
         SELECT
-          p.id, p.title, p.content, p.likes, p.is_visible, p.created_at,
+          p.id, p.title, p.content, p.likes, p.created_at, p.community_id, p.tournament_id,
           u.username AS author_username,
-          c.name AS community_name
+          c.name AS community_name,
+          t.name AS tournament_name
         FROM posts p
         JOIN users u ON u.id = p.author_id
         LEFT JOIN communities c ON c.id = p.community_id
-        WHERE p.is_visible = TRUE
+        LEFT JOIN tournaments t ON t.id = p.tournament_id
         ORDER BY p.created_at DESC
         LIMIT 50
       `);
@@ -62,7 +64,7 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
 
 // POST /api/posts — Crear post (requiere auth)
 router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
-  const { title, content, community_id } = req.body;
+  const { title, content, community_id, tournament_id } = req.body;
 
   if (!title || !content) {
     res.status(400).json({ error: 'Título y contenido son requeridos.' });
@@ -71,10 +73,10 @@ router.post('/', authMiddleware, async (req: AuthRequest, res: Response): Promis
 
   try {
     const result = await query(`
-      INSERT INTO posts (title, content, author_id, community_id)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, title, content, likes, created_at
-    `, [title, content, req.user!.id, community_id || null]);
+      INSERT INTO posts (title, content, author_id, community_id, tournament_id)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id, title, content, likes, created_at, community_id, tournament_id
+    `, [title, content, req.user!.id, community_id || null, tournament_id || null]);
 
     res.status(201).json({ message: 'Post creado.', post: result.rows[0] });
   } catch (err) {

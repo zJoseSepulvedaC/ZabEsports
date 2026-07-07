@@ -311,6 +311,15 @@ function App() {
   const [editPostTitle, setEditPostTitle] = useState('');
   const [editPostContent, setEditPostContent] = useState('');
 
+  const [showPostModal, setShowPostModal] = useState(false);
+  const [newPostTitle, setNewPostTitle] = useState('');
+  const [newPostContent, setNewPostContent] = useState('');
+  const [newPostCommunityId, setNewPostCommunityId] = useState('');
+  const [newPostTournamentId, setNewPostTournamentId] = useState('');
+
+  const [filterCommunityId, setFilterCommunityId] = useState('');
+  const [filterTournamentId, setFilterTournamentId] = useState('');
+
   const fetchInvitations = () => {
     if (!token) return;
     fetch(`${API_URL}/api/players/invitations`, {
@@ -596,6 +605,40 @@ function App() {
     setEditingPost(post);
     setEditPostTitle(post.title);
     setEditPostContent(post.content);
+  };
+
+  const handleCreatePostSubmit = async (e) => {
+    e.preventDefault();
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/api/posts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          title: newPostTitle,
+          content: newPostContent,
+          community_id: newPostCommunityId || null,
+          tournament_id: newPostTournamentId || null
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Insertar el nuevo post arriba en la lista
+        setPosts([data.post, ...posts]);
+        setShowPostModal(false);
+        setNewPostTitle('');
+        setNewPostContent('');
+        setNewPostCommunityId('');
+        setNewPostTournamentId('');
+        // Recargar posts para traer nombres mapeados
+        fetchPosts();
+      }
+    } catch (err) {
+      console.error('Error al crear post:', err);
+    }
   };
 
   const handleLoginSubmit = async (e) => {
@@ -914,6 +957,15 @@ function App() {
             communities={communities}
             tournaments={tournaments}
             setShowCommModal={setShowCommModal}
+            setShowPostModal={setShowPostModal}
+            newPostCommunityId={newPostCommunityId}
+            setNewPostCommunityId={setNewPostCommunityId}
+            newPostTournamentId={newPostTournamentId}
+            setNewPostTournamentId={setNewPostTournamentId}
+            filterCommunityId={filterCommunityId}
+            setFilterCommunityId={setFilterCommunityId}
+            filterTournamentId={filterTournamentId}
+            setFilterTournamentId={setFilterTournamentId}
           />
         )}
 
@@ -1260,6 +1312,77 @@ function App() {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
                 <button type="submit" className="btn-primary" style={{ flex: 1 }}>Guardar Cambios</button>
                 <button type="button" className="btn-primary" style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} onClick={() => setEditingPost(null)}>{t.cancelBtn}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CREACIÓN DE POST */}
+      {showPostModal && (
+        <div className="modal-overlay" onClick={() => setShowPostModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Crear Nueva Publicación</h2>
+            <form onSubmit={handleCreatePostSubmit}>
+              <div className="input-group">
+                <label>{t.nameLabel || 'Título'}</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Escribe el título de tu publicación"
+                  required 
+                  value={newPostTitle} 
+                  onChange={(e) => setNewPostTitle(e.target.value)}
+                />
+              </div>
+              <div className="input-group" style={{ marginTop: '1rem' }}>
+                <label>{t.descLabel || 'Contenido'}</label>
+                <textarea 
+                  className="input-field" 
+                  placeholder="¿Qué quieres compartir hoy?"
+                  style={{ minHeight: '120px' }} 
+                  required 
+                  value={newPostContent} 
+                  onChange={(e) => setNewPostContent(e.target.value)} 
+                />
+              </div>
+              <div className="input-group" style={{ marginTop: '1rem' }}>
+                <label>Vincular a Comunidad (Opcional)</label>
+                <select 
+                  className="select-filter" 
+                  style={{ width: '100%', padding: '0.75rem' }} 
+                  value={newPostCommunityId}
+                  onChange={(e) => {
+                    setNewPostCommunityId(e.target.value);
+                    setNewPostTournamentId(''); // Limpiar torneo si selecciona comunidad
+                  }}
+                >
+                  <option value="">-- Publicación General (Sin comunidad) --</option>
+                  {communities.filter(c => c.is_approved).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="input-group" style={{ marginTop: '1rem' }}>
+                <label>Vincular a Torneo (Opcional)</label>
+                <select 
+                  className="select-filter" 
+                  style={{ width: '100%', padding: '0.75rem' }} 
+                  value={newPostTournamentId}
+                  onChange={(e) => {
+                    setNewPostTournamentId(e.target.value);
+                    setNewPostCommunityId(''); // Limpiar comunidad si selecciona torneo
+                  }}
+                >
+                  <option value="">-- Sin vincular a torneo --</option>
+                  {tournaments.filter(t => t.is_approved).map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Publicar</button>
+                <button type="button" className="btn-primary" style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} onClick={() => setShowPostModal(false)}>{t.cancelBtn}</button>
               </div>
             </form>
           </div>
