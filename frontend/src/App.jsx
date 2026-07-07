@@ -320,6 +320,22 @@ function App() {
   const [filterCommunityId, setFilterCommunityId] = useState('');
   const [filterTournamentId, setFilterTournamentId] = useState('');
 
+  // Modales personalizados de comentarios
+  const [showAddCommentModal, setShowAddCommentModal] = useState(false);
+  const [commentingPostId, setCommentingPostId] = useState(null);
+  const [newCommentContent, setNewCommentContent] = useState('');
+
+  const [showViewCommentsModal, setShowViewCommentsModal] = useState(false);
+  const [viewingCommentsPostId, setViewingCommentsPostId] = useState(null);
+  const [commentsList, setCommentsList] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+
+  // Modal personalizado de reportes
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportType, setReportType] = useState(''); // 'post', 'community', 'tournament'
+  const [reportTargetId, setReportTargetId] = useState(null);
+  const [reportReason, setReportReason] = useState('');
+
   const fetchInvitations = () => {
     if (!token) return;
     fetch(`${API_URL}/api/players/invitations`, {
@@ -776,49 +792,62 @@ function App() {
     }
   };
 
-  const handleComment = async (postId) => {
-    if (!token) return;
-    const content = window.prompt("Escribe tu comentario:");
-    if (!content) return;
+  const handleOpenAddComment = (postId) => {
+    setCommentingPostId(postId);
+    setNewCommentContent('');
+    setShowAddCommentModal(true);
+  };
+
+  const handleAddCommentSubmit = async (e) => {
+    e.preventDefault();
+    if (!token || !commentingPostId || !newCommentContent) return;
     try {
-      const res = await fetch(`${API_URL}/api/posts/${postId}/comment`, {
+      const res = await fetch(`${API_URL}/api/posts/${commentingPostId}/comment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ content: newCommentContent })
       });
       if (res.ok) {
-        window.alert("¡Comentario publicado con éxito!");
-        fetchPosts();
+        setShowAddCommentModal(false);
+        setNewCommentContent('');
+        handleOpenViewComments(commentingPostId);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error al comentar:', err);
     }
   };
 
-  const handleViewComments = async (postId) => {
+  const handleOpenViewComments = async (postId) => {
+    setViewingCommentsPostId(postId);
+    setCommentsList([]);
+    setLoadingComments(true);
+    setShowViewCommentsModal(true);
     try {
       const res = await fetch(`${API_URL}/api/posts/${postId}/comments`);
       if (res.ok) {
-        const comments = await res.json();
-        if (comments.length === 0) {
-          window.alert("No hay comentarios aún.");
-        } else {
-          const formatted = comments.map(c => `@${c.author_username}: ${c.content}`).join('\n');
-          window.alert(`Comentarios:\n\n${formatted}`);
-        }
+        const data = await res.json();
+        setCommentsList(data);
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error al obtener comentarios:', err);
+    } finally {
+      setLoadingComments(false);
     }
   };
 
-  const handleReport = async ({ postId, communityId, tournamentId }) => {
-    if (!token) return;
-    const reason = window.prompt("Escribe el motivo del reporte:");
-    if (!reason) return;
+  const handleOpenReport = (type, targetId) => {
+    setReportType(type);
+    setReportTargetId(targetId);
+    setReportReason('');
+    setShowReportModal(true);
+  };
+
+  const handleReportSubmit = async (e) => {
+    e.preventDefault();
+    if (!token || !reportTargetId || !reportReason) return;
     try {
       const res = await fetch(`${API_URL}/api/reports`, {
         method: 'POST',
@@ -827,17 +856,19 @@ function App() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          reported_post_id: postId || null,
-          reported_community_id: communityId || null,
-          reported_tournament_id: tournamentId || null,
-          reason
-         })
+          reported_post_id: reportType === 'post' ? reportTargetId : null,
+          reported_community_id: reportType === 'community' ? reportTargetId : null,
+          reported_tournament_id: reportType === 'tournament' ? reportTargetId : null,
+          reason: reportReason
+        })
       });
       if (res.ok) {
+        setShowReportModal(false);
+        setReportReason('');
         window.alert("¡Reporte enviado con éxito! El equipo de moderación lo revisará.");
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error al reportar:', err);
     }
   };
 
@@ -1016,9 +1047,9 @@ function App() {
             loadingPosts={loadingPosts}
             posts={posts}
             handleLike={handleLike}
-            handleComment={handleComment}
-            handleViewComments={handleViewComments}
-            handleReport={handleReport}
+            handleComment={handleOpenAddComment}
+            handleViewComments={handleOpenViewComments}
+            handleReport={handleOpenReport}
             openEditPost={openEditPost}
             handleDeletePost={handleDeletePost}
             loadingCommunities={loadingCommunities}
@@ -1451,6 +1482,109 @@ function App() {
               <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
                 <button type="submit" className="btn-primary" style={{ flex: 1 }}>Publicar</button>
                 <button type="button" className="btn-primary" style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} onClick={() => setShowPostModal(false)}>{t.cancelBtn}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL DE AGREGAR COMENTARIO */}
+      {showAddCommentModal && (
+        <div className="modal-overlay" onClick={() => setShowAddCommentModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Agregar Comentario</h2>
+            <form onSubmit={handleAddCommentSubmit}>
+              <div className="input-group">
+                <label>Tu Comentario</label>
+                <textarea 
+                  className="input-field" 
+                  placeholder="Escribe un comentario respetuoso..."
+                  style={{ minHeight: '100px' }} 
+                  required 
+                  value={newCommentContent} 
+                  onChange={(e) => setNewCommentContent(e.target.value)} 
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>Enviar Comentario</button>
+                <button type="button" className="btn-primary" style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} onClick={() => setShowAddCommentModal(false)}>{t.cancelBtn}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE VER COMENTARIOS */}
+      {showViewCommentsModal && (
+        <div className="modal-overlay" onClick={() => setShowViewCommentsModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Comentarios de la Publicación</h2>
+            <div style={{ maxHeight: '300px', overflowY: 'auto', margin: '1.5rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {loadingComments && <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>⏳ Cargando comentarios...</p>}
+              {!loadingComments && commentsList.length === 0 && (
+                <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>No hay comentarios aún. ¡Sé el primero!</p>
+              )}
+              {!loadingComments && commentsList.map(c => (
+                <div key={c.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: 'var(--accent-cyan)', marginBottom: '0.25rem' }}>
+                    @{c.author_username}
+                  </div>
+                  <div style={{ fontSize: '0.9rem', color: 'var(--text-light)', whiteSpace: 'pre-wrap' }}>
+                    {c.content}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    {new Date(c.created_at).toLocaleString('es-CL')}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                type="button" 
+                className="btn-primary" 
+                style={{ flex: 1 }} 
+                onClick={() => {
+                  setShowViewCommentsModal(false);
+                  handleOpenAddComment(viewingCommentsPostId);
+                }}
+              >
+                + Comentar
+              </button>
+              <button 
+                type="button" 
+                className="btn-primary" 
+                style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} 
+                onClick={() => setShowViewCommentsModal(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE REPORTAR */}
+      {showReportModal && (
+        <div className="modal-overlay" onClick={() => setShowReportModal(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Reportar Contenido</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+              Ayúdanos a mantener la comunidad limpia. Por favor indica la razón del reporte.
+            </p>
+            <form onSubmit={handleReportSubmit}>
+              <div className="input-group">
+                <label>Motivo del Reporte</label>
+                <textarea 
+                  className="input-field" 
+                  placeholder="Ej: Lenguaje ofensivo, spam, etc."
+                  style={{ minHeight: '100px' }} 
+                  required 
+                  value={reportReason} 
+                  onChange={(e) => setReportReason(e.target.value)} 
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1, backgroundColor: '#ef4444' }}>Enviar Reporte</button>
+                <button type="button" className="btn-primary" style={{ background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }} onClick={() => setShowReportModal(false)}>{t.cancelBtn}</button>
               </div>
             </form>
           </div>
