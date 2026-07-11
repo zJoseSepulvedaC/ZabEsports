@@ -982,50 +982,15 @@ function App() {
         </div>
         <nav>
           <ul className="nav-links">
-            <button 
-              className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('dashboard'); setShowNotifDropdown(false); }}
-            >
-              <i className="fa-solid fa-house"></i> {t.home}
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'recruitment' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('recruitment'); setShowNotifDropdown(false); }}
-            >
-              <i className="fa-solid fa-handshake"></i> {t.teambuilder}
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'tournaments' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('tournaments'); setShowNotifDropdown(false); }}
-            >
-              <i className="fa-solid fa-trophy"></i> {t.tournaments}
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`}
-              onClick={() => { setActiveTab('profile'); setShowNotifDropdown(false); }}
-            >
-              <i className="fa-solid fa-user"></i> {t.profile}
-            </button>
-            
-            {/* Moderación - Solo admin o moderador */}
-            {(currentUser?.role === 'admin' || currentUser?.role === 'moderador') && (
-              <button 
-                className={`nav-item ${activeTab === 'moderation' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('moderation'); setShowNotifDropdown(false); }}
-              >
-                <i className="fa-solid fa-shield-halved"></i> {t.moderation}
-              </button>
+            <li className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>🏠 {t.home}</li>
+            <li className={`nav-item ${activeTab === 'recruitment' ? 'active' : ''}`} onClick={() => setActiveTab('recruitment')}>🤝 {t.teambuilder}</li>
+            <li className={`nav-item ${activeTab === 'tournaments' ? 'active' : ''}`} onClick={() => setActiveTab('tournaments')}>🏆 {t.tournaments}</li>
+            <li className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>👤 {t.profile}</li>
+            {(userRole === 'moderador' || userRole === 'admin') && (
+              <li className={`nav-item ${activeTab === 'moderation' ? 'active' : ''}`} onClick={() => setActiveTab('moderation')}>🛡️ {t.moderation}</li>
             )}
-
-            {/* Administración Global - Solo admin */}
-            {currentUser?.role === 'admin' && (
-              <button 
-                className={`nav-item ${activeTab === 'admin' ? 'active' : ''}`}
-                onClick={() => { setActiveTab('admin'); setShowNotifDropdown(false); }}
-                style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', color: 'var(--primary-color)' }}
-              >
-                <i className="fa-solid fa-user-shield"></i> Administración
-              </button>
+            {userRole === 'admin' && (
+              <li className={`nav-item ${activeTab === 'admin' ? 'active' : ''}`} onClick={() => setActiveTab('admin')} style={{ marginTop: '1rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', color: 'var(--primary-color)' }}>👑 Administración</li>
             )}
           </ul>
         </nav>
