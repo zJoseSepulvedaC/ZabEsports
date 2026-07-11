@@ -7,6 +7,8 @@ export default function AdminPanel({ token, API_URL }) {
   const [communities, setCommunities] = useState([]);
   const [tournaments, setTournaments] = useState([]);
 
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null });
+
   useEffect(() => {
     if (activeTab === 'users') fetchUsers();
     if (activeTab === 'communities') fetchCommunities();
@@ -55,80 +57,100 @@ export default function AdminPanel({ token, API_URL }) {
     }
   };
 
-  const handleDeleteUser = async (id) => {
-    if (!window.confirm('¿Seguro que deseas eliminar permanentemente a este usuario?')) return;
-    try {
-      const res = await fetch(`${API_URL}/api/users/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setUsers(users.filter(u => u.id !== id));
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error al eliminar usuario');
+  const handleDeleteUser = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      message: '¿Seguro que deseas eliminar permanentemente a este usuario?',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_URL}/api/users/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            setUsers(users => users.filter(u => u.id !== id));
+          } else {
+            const data = await res.json();
+            alert(data.error || 'Error al eliminar usuario');
+          }
+        } catch (err) {
+          console.error(err);
+        }
       }
-    } catch (err) {
-      console.error(err);
-    }
+    });
   };
 
-  const handleUpdateRole = async (id, newRole) => {
-    if (!window.confirm(`¿Cambiar el rol a ${newRole}?`)) return;
-    try {
-      const res = await fetch(`${API_URL}/api/users/${id}`, {
-        method: 'PUT',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ role: newRole })
-      });
-      if (res.ok) {
-        setUsers(users.map(u => u.id === id ? { ...u, role: newRole } : u));
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error al actualizar rol');
+  const handleUpdateRole = (id, newRole) => {
+    setConfirmDialog({
+      isOpen: true,
+      message: `¿Cambiar el rol a ${newRole}?`,
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_URL}/api/users/${id}`, {
+            method: 'PUT',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}` 
+            },
+            body: JSON.stringify({ role: newRole })
+          });
+          if (res.ok) {
+            setUsers(users => users.map(u => u.id === id ? { ...u, role: newRole } : u));
+          } else {
+            const data = await res.json();
+            alert(data.error || 'Error al actualizar rol');
+          }
+        } catch (err) {
+          console.error(err);
+        }
       }
-    } catch (err) {
-      console.error(err);
-    }
+    });
   };
 
-  const handleDeleteCommunity = async (id) => {
-    if (!window.confirm('¿Seguro que deseas eliminar esta comunidad y todo su contenido?')) return;
-    try {
-      const res = await fetch(`${API_URL}/api/communities/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setCommunities(communities.filter(c => c.id !== id));
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error al eliminar comunidad');
+  const handleDeleteCommunity = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      message: '¿Seguro que deseas eliminar esta comunidad y todo su contenido?',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_URL}/api/communities/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            setCommunities(communities => communities.filter(c => c.id !== id));
+          } else {
+            const data = await res.json();
+            alert(data.error || 'Error al eliminar comunidad');
+          }
+        } catch (err) {
+          console.error(err);
+        }
       }
-    } catch (err) {
-      console.error(err);
-    }
+    });
   };
 
-  const handleDeleteTournament = async (id) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este torneo?')) return;
-    try {
-      const res = await fetch(`${API_URL}/api/tournaments/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setTournaments(tournaments.filter(t => t.id !== id));
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error al eliminar torneo');
+  const handleDeleteTournament = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      message: '¿Seguro que deseas eliminar este torneo?',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_URL}/api/tournaments/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            setTournaments(tournaments => tournaments.filter(t => t.id !== id));
+          } else {
+            const data = await res.json();
+            alert(data.error || 'Error al eliminar torneo');
+          }
+        } catch (err) {
+          console.error(err);
+        }
       }
-    } catch (err) {
-      console.error(err);
-    }
+    });
   };
 
   return (
@@ -315,6 +337,36 @@ export default function AdminPanel({ token, API_URL }) {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación customizado para Admin */}
+      {confirmDialog.isOpen && (
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <h3 style={{ color: 'var(--text-light)', marginBottom: '1.5rem', fontWeight: 800, fontSize: '1.3rem', borderBottom: '2px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+              Confirmación Requerida
+            </h3>
+            <p style={{ marginBottom: '2rem', color: 'var(--text-muted)' }}>{confirmDialog.message}</p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button 
+                className="btn-secondary" 
+                onClick={() => setConfirmDialog({ isOpen: false, message: '', onConfirm: null })}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={() => {
+                  if (confirmDialog.onConfirm) confirmDialog.onConfirm();
+                  setConfirmDialog({ isOpen: false, message: '', onConfirm: null });
+                }}
+                style={{ background: 'var(--danger, #ef4444)', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.25)', color: 'white' }}
+              >
+                Aceptar
+              </button>
+            </div>
           </div>
         </div>
       )}
