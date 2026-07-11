@@ -151,7 +151,7 @@ router.post('/:id/like', authMiddleware, async (req: AuthRequest, res: Response)
     res.json({ message: 'Like registrado.', post: result.rows[0] });
   } catch (err) {
     console.error('Error al dar like:', err);
-    res.status(500).json({ error: 'Error interno del servidor.' });
+    res.status(500).json({ error: String(err) });
   }
 });
 
