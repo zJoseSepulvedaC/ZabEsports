@@ -199,9 +199,9 @@ export default function AdminPanel({ token, API_URL }) {
                           cursor: 'pointer'
                         }}
                       >
-                        <option value="usuario">Usuario</option>
-                        <option value="moderador">Moderador</option>
-                        <option value="admin">Administrador</option>
+                        <option style={{ background: '#1e1e28', color: 'white' }} value="usuario">Usuario</option>
+                        <option style={{ background: '#1e1e28', color: 'white' }} value="moderador">Moderador</option>
+                        <option style={{ background: '#1e1e28', color: 'white' }} value="admin">Administrador</option>
                       </select>
                     </td>
                     <td>
