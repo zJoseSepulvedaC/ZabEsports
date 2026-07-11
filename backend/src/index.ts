@@ -38,6 +38,20 @@ app.use('/api/teams',       teamsRouter);
 app.use('/api/users',       usersRouter);
 app.use('/api/reports',     reportsRouter);
 
+// TEMPORAL: Endpoint para aplicar migraciones en producción
+import fs from 'fs';
+import path from 'path';
+app.get('/api/migrate-now-secret', async (req: Request, res: Response) => {
+  try {
+    const sql = fs.readFileSync(path.join(__dirname, 'db/init.sql'), 'utf-8');
+    await pool.query(sql);
+    res.json({ success: true, message: 'Migraciones aplicadas con éxito' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: String(err) });
+  }
+});
+
 // Endpoint de salud — verifica también la conexión a la DB
 app.get('/api/health', async (req: Request, res: Response) => {
   let dbStatus = 'DOWN';
