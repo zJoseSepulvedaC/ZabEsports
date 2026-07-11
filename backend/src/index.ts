@@ -38,33 +38,6 @@ app.use('/api/teams',       teamsRouter);
 app.use('/api/users',       usersRouter);
 app.use('/api/reports',     reportsRouter);
 
-// TEMPORAL: Endpoint para aplicar migraciones en producción
-app.get('/api/migrate-now-secret', async (req: Request, res: Response) => {
-  try {
-    // 1. Limpiar duplicados antes de crear el índice único
-    await pool.query(`
-      DELETE FROM interactions a USING interactions b
-      WHERE a.id < b.id 
-        AND a.post_id = b.post_id 
-        AND a.user_id = b.user_id 
-        AND a.type = b.type
-    `);
-
-    // 2. Crear índices
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_posts_feed ON posts(created_at DESC)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_posts_author_date ON posts(author_id, created_at DESC)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_interactions_post_type ON interactions(post_id, type)');
-    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_interactions_upsert ON interactions(post_id, user_id, type)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)');
-    await pool.query('CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC)');
-    
-    res.json({ success: true, message: 'Migraciones (índices) aplicadas con éxito' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: String(err) });
-  }
-});
-
 // Endpoint de salud — verifica también la conexión a la DB
 app.get('/api/health', async (req: Request, res: Response) => {
   let dbStatus = 'DOWN';
