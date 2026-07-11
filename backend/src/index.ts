@@ -39,13 +39,15 @@ app.use('/api/users',       usersRouter);
 app.use('/api/reports',     reportsRouter);
 
 // TEMPORAL: Endpoint para aplicar migraciones en producción
-import fs from 'fs';
-import path from 'path';
 app.get('/api/migrate-now-secret', async (req: Request, res: Response) => {
   try {
-    const sql = fs.readFileSync(path.join(__dirname, 'db/init.sql'), 'utf-8');
-    await pool.query(sql);
-    res.json({ success: true, message: 'Migraciones aplicadas con éxito' });
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_posts_feed ON posts(created_at DESC)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_posts_author_date ON posts(author_id, created_at DESC)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_interactions_post_type ON interactions(post_id, type)');
+    await pool.query('CREATE UNIQUE INDEX IF NOT EXISTS idx_interactions_upsert ON interactions(post_id, user_id, type)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)');
+    await pool.query('CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC)');
+    res.json({ success: true, message: 'Migraciones (índices) aplicadas con éxito' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: String(err) });
