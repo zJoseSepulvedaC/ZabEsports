@@ -75,7 +75,9 @@ export default function Feed({
   filterCommunityId,
   setFilterCommunityId,
   filterTournamentId,
-  setFilterTournamentId
+  setFilterTournamentId,
+  handleLeaveCommunity,
+  handleDeleteCommunity,
 }) {
   
   // Filtrar posts según comunidad o torneo seleccionado
@@ -269,7 +271,7 @@ export default function Feed({
                           {c.member_count} {t.members} • {c.game}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                         <button 
                           className="btn-primary" 
                           style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', backgroundColor: filterCommunityId === c.id ? 'var(--accent-purple)' : '' }}
@@ -280,6 +282,28 @@ export default function Feed({
                         >
                           Ver
                         </button>
+                        {/* Botón Eliminar: solo si eres el dueño */}
+                        {c.owner_username === currentUser?.username && (
+                          <button 
+                            className="btn-primary" 
+                            style={{ padding: '0.4rem 0.7rem', fontSize: '0.8rem', background: '#ef4444', border: 'none', color: '#fff' }}
+                            title="Eliminar mi comunidad"
+                            onClick={() => handleDeleteCommunity(c.id)}
+                          >
+                            🗑️ Eliminar
+                          </button>
+                        )}
+                        {/* Botón Salir: si eres miembro pero NO el dueño */}
+                        {c.owner_username !== currentUser?.username && (
+                          <button 
+                            className="btn-primary" 
+                            style={{ padding: '0.4rem 0.7rem', fontSize: '0.8rem', background: 'none', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+                            title="Salir de la comunidad"
+                            onClick={() => handleLeaveCommunity(c.id)}
+                          >
+                            🚪 Salir
+                          </button>
+                        )}
                         <button 
                           className="btn-primary" 
                           style={{ padding: '0.4rem', fontSize: '0.8rem', background: 'none', border: '1px solid #ef4444', color: '#ef4444' }}

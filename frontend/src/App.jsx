@@ -927,6 +927,79 @@ function App() {
     }
   };
 
+  const handleLeaveCommunity = async (id) => {
+    if (!token) return;
+    if (!window.confirm('¿Seguro que deseas salir de esta comunidad?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/communities/${id}/leave`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchCommunities();
+      }
+    } catch (err) {
+      console.error('Error al salir de comunidad:', err);
+    }
+  };
+
+  const handleDeleteCommunity = async (id) => {
+    if (!token) return;
+    if (!window.confirm('¿Seguro que deseas eliminar esta comunidad? Se perderá todo su contenido.')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/communities/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchCommunities();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al eliminar comunidad');
+      }
+    } catch (err) {
+      console.error('Error al eliminar comunidad:', err);
+    }
+  };
+
+  const handleLeaveTournament = async (id) => {
+    if (!token) return;
+    if (!window.confirm('¿Seguro que deseas anular tu inscripción de este torneo?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/tournaments/${id}/register`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchTournaments();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al anular inscripción');
+      }
+    } catch (err) {
+      console.error('Error al anular inscripción:', err);
+    }
+  };
+
+  const handleDeleteTournament = async (id) => {
+    if (!token) return;
+    if (!window.confirm('¿Seguro que deseas eliminar este torneo?')) return;
+    try {
+      const res = await fetch(`${API_URL}/api/tournaments/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        fetchTournaments();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Error al eliminar torneo');
+      }
+    } catch (err) {
+      console.error('Error al eliminar torneo:', err);
+    }
+  };
+
   const filteredPlayers = players.filter(player => {
     const matchRole = selectedRole === 'ALL' || player.position === selectedRole;
     const matchRank = selectedRank === 'ALL' || (player.rank && player.rank.toUpperCase().includes(selectedRank.toUpperCase()));
@@ -1097,6 +1170,8 @@ function App() {
             setFilterCommunityId={setFilterCommunityId}
             filterTournamentId={filterTournamentId}
             setFilterTournamentId={setFilterTournamentId}
+            handleLeaveCommunity={handleLeaveCommunity}
+            handleDeleteCommunity={handleDeleteCommunity}
           />
         )}
 
@@ -1126,6 +1201,10 @@ function App() {
             translations={translations}
             lang={lang}
             t={t}
+            currentUser={currentUser}
+            token={token}
+            onLeaveTournament={handleLeaveTournament}
+            onDeleteTournament={handleDeleteTournament}
           />
         )}
 

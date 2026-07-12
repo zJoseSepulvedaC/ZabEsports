@@ -7,7 +7,11 @@ export default function Tournaments({
   setRegisteringTourney,
   translations,
   lang,
-  t
+  t,
+  currentUser,
+  token,
+  onLeaveTournament,
+  onDeleteTournament,
 }) {
   const [expandedTourneyId, setExpandedTourneyId] = useState(null);
   const [registeredTeams, setRegisteredTeams] = useState([]);
@@ -93,6 +97,25 @@ export default function Tournaments({
                   ) : (
                     <button className="btn-primary" style={{ opacity: 0.5, cursor: 'not-allowed' }} disabled>
                       Bloqueado
+                    </button>
+                  )}
+                  {/* Botón Anular Inscripción */}
+                  {tourney.organizer_username === currentUser?.username && onDeleteTournament && (
+                    <button
+                      className="btn-primary"
+                      style={{ background: '#ef4444', border: 'none', color: '#fff', padding: '0.5rem 0.9rem', fontSize: '0.85rem' }}
+                      onClick={() => onDeleteTournament(tourney.id)}
+                    >
+                      🗑️ Eliminar
+                    </button>
+                  )}
+                  {tourney.organizer_username !== currentUser?.username && onLeaveTournament && (
+                    <button
+                      className="btn-primary"
+                      style={{ background: 'none', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)', padding: '0.5rem 0.9rem', fontSize: '0.85rem' }}
+                      onClick={() => onLeaveTournament(tourney.id)}
+                    >
+                      🚪 Anular Inscripción
                     </button>
                   )}
                 </div>
