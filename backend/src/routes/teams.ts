@@ -104,4 +104,25 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// DELETE /api/teams/:id — Eliminar equipo (solo el capitán)
+router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const check = await query('SELECT captain_id FROM teams WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'Equipo no encontrado.' });
+      return;
+    }
+    if (check.rows[0].captain_id !== req.user!.id) {
+      res.status(403).json({ error: 'Solo el capitán puede eliminar la escuadra.' });
+      return;
+    }
+    await query('DELETE FROM teams WHERE id = $1', [id]);
+    res.json({ message: 'Escuadra eliminada con éxito.' });
+  } catch (err) {
+    console.error('Error al eliminar equipo:', err);
+    res.status(500).json({ error: 'Error interno al eliminar el equipo.' });
+  }
+});
+
 export default router;

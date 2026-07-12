@@ -18,6 +18,7 @@ export default function Profile({
   handleRiotLinkStart,
   handleRiotLinkVerify,
   handleCreateTeam,
+  handleDeleteTeam,
   t
 }) {
   return (
@@ -223,9 +224,30 @@ export default function Profile({
                   ))}
                 </div>
                 {team.captain_id === currentUser?.id && (
-                  <span className="role-badge" style={{ marginTop: '0.5rem', display: 'inline-block', fontSize: '0.7rem' }}>
-                    Capitán
-                  </span>
+                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span className="role-badge" style={{ fontSize: '0.7rem' }}>Capitán</span>
+                    <button
+                      onClick={() => handleDeleteTeam(team.id)}
+                      style={{
+                        marginLeft: 'auto',
+                        background: '#ef4444',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        padding: '0.25rem 0.65rem',
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                      }}
+                    >
+                      🗑️ Eliminar
+                    </button>
+                  </div>
+                )}
+                {team.captain_id !== currentUser?.id && (
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Miembro</span>
+                  </div>
                 )}
               </div>
             ))}

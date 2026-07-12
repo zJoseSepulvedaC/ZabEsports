@@ -1,6 +1,7 @@
 -- ============================================================
 -- ZabEsports - Esquema de Base de Datos Completo
--- Versión: Semana 6 | Grupo 10 (Compatible con Azure Cloud)
+-- Versión: Semana 8 | Grupo 10 (Compatible con Azure Cloud)
+-- Actualizado: Semana 8 — Optimización de rendimiento (índices compuestos)
 -- ============================================================
 
 -- ============================================================
@@ -103,8 +104,12 @@ CREATE TABLE IF NOT EXISTS posts (
     updated_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_posts_author    ON posts(author_id);
-CREATE INDEX IF NOT EXISTS idx_posts_community ON posts(community_id);
+CREATE INDEX IF NOT EXISTS idx_posts_author       ON posts(author_id);
+CREATE INDEX IF NOT EXISTS idx_posts_community    ON posts(community_id);
+-- Índice compuesto: optimiza el ORDER BY created_at DESC del feed
+CREATE INDEX IF NOT EXISTS idx_posts_feed         ON posts(created_at DESC);
+-- Índice compuesto: optimiza búsqueda por autor + orden temporal
+CREATE INDEX IF NOT EXISTS idx_posts_author_date  ON posts(author_id, created_at DESC);
 
 -- ============================================================
 -- TABLA: interactions
@@ -118,8 +123,12 @@ CREATE TABLE IF NOT EXISTS interactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_interactions_post ON interactions(post_id);
-CREATE INDEX IF NOT EXISTS idx_interactions_user ON interactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_interactions_post      ON interactions(post_id);
+CREATE INDEX IF NOT EXISTS idx_interactions_user      ON interactions(user_id);
+-- Índice compuesto: optimiza COUNT de likes por post (post_id + type)
+CREATE INDEX IF NOT EXISTS idx_interactions_post_type ON interactions(post_id, type);
+-- Índice único parcial: garantiza un solo like por usuario/post
+CREATE UNIQUE INDEX IF NOT EXISTS idx_interactions_upsert ON interactions(post_id, user_id, type);
 
 -- ============================================================
 -- TABLA: reports
@@ -134,7 +143,11 @@ CREATE TABLE IF NOT EXISTS reports (
     created_at  TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_reports_post ON reports(reported_post_id);
+CREATE INDEX IF NOT EXISTS idx_reports_post       ON reports(reported_post_id);
+-- Índice de estado: optimiza filtro de reportes PENDIENTES en el panel de moderación
+CREATE INDEX IF NOT EXISTS idx_reports_status     ON reports(status);
+-- Índice de fecha: optimiza ORDER BY created_at DESC en la lista de reportes
+CREATE INDEX IF NOT EXISTS idx_reports_created_at ON reports(created_at DESC);
 
 
 -- ============================================================

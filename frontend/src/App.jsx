@@ -252,6 +252,9 @@ function App() {
 
   // Modal de confirmación global (reemplaza window.confirm)
   const [confirmModal, setConfirmModal] = useState({ show: false, message: '', onConfirm: null });
+
+  // Modal de info/éxito global (reemplaza alert())
+  const [infoModal, setInfoModal] = useState({ show: false, message: '', isError: false });
   
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState('');
@@ -345,6 +348,12 @@ function App() {
     setConfirmModal({ show: true, message, onConfirm });
   };
   const hideConfirm = () => setConfirmModal({ show: false, message: '', onConfirm: null });
+
+  // Helper: muestra modal de éxito o error (reemplaza alert)
+  const showInfo = (message, isError = false) => {
+    setInfoModal({ show: true, message, isError });
+  };
+  const hideInfo = () => setInfoModal({ show: false, message: '', isError: false });
 
   const fetchInvitations = () => {
     if (!token) return;
@@ -483,14 +492,35 @@ function App() {
       if (res.ok) {
         setNewTeamName('');
         fetchMyTeams();
-        alert('¡Equipo creado exitosamente!');
+        showInfo('¡Equipo creado exitosamente!');
       } else {
         const data = await res.json();
-        alert(data.error || 'Error al crear equipo');
+        showInfo(data.error || 'Error al crear equipo', true);
       }
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const handleDeleteTeam = async (id) => {
+    if (!token) return;
+    showConfirm('¿Seguro que deseas eliminar esta escuadra? Esta acción no se puede deshacer.', async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/teams/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          fetchMyTeams();
+          showInfo('¡Escuadra eliminada con éxito.');
+        } else {
+          const data = await res.json();
+          showInfo(data.error || 'Error al eliminar escuadra', true);
+        }
+      } catch (err) {
+        console.error('Error al eliminar equipo:', err);
+      }
+    });
   };
 
   const handleSendRecruit = async (e) => {
@@ -514,10 +544,10 @@ function App() {
         setRecruitingPlayer(null);
         setRecruitTeamId('');
         setRecruitMessage('');
-        alert('¡Invitación de reclutamiento enviada con éxito!');
+        showInfo('¡Invitación de reclutamiento enviada con éxito!');
       } else {
         const data = await res.json();
-        alert(data.error || 'Error al enviar invitación.');
+        showInfo(data.error || 'Error al enviar invitación.', true);
       }
     } catch (err) {
       console.error('Error al enviar invitación:', err);
@@ -540,10 +570,10 @@ function App() {
         setRegisteringTourney(null);
         setRegisteringTeamId('');
         fetchTournaments();
-        alert('¡Inscripción exitosa al torneo!');
+        showInfo('¡Inscripción exitosa al torneo!');
       } else {
         const data = await res.json();
-        alert(data.error || 'Error al inscribirse');
+        showInfo(data.error || 'Error al inscribirse', true);
       }
     } catch (err) {
       console.error('Error al inscribirse:', err);
@@ -563,7 +593,7 @@ function App() {
       });
       if (res.ok) {
         fetchInvitations();
-        alert('Invitación aceptada. ¡Te has unido al equipo!');
+        showInfo('Invitación aceptada. ¡Te has unido al equipo!');
       }
     } catch (err) {
       console.error('Error al aceptar invitación:', err);
@@ -1241,6 +1271,7 @@ function App() {
             handleRiotLinkStart={handleRiotLinkStart}
             handleRiotLinkVerify={handleRiotLinkVerify}
             handleCreateTeam={handleCreateTeam}
+            handleDeleteTeam={handleDeleteTeam}
             t={t}
           />
         )}
@@ -1727,6 +1758,27 @@ function App() {
                 </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE INFO / ÉXITO (reemplaza alert) */}
+      {infoModal.show && (
+        <div className="modal-overlay" style={{ zIndex: 9998 }} onClick={hideInfo}>
+          <div className="modal-card" style={{ maxWidth: '380px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>
+              {infoModal.isError ? '❌' : '✅'}
+            </div>
+            <p style={{ color: infoModal.isError ? '#f87171' : 'var(--text-light)', fontSize: '1rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              {infoModal.message}
+            </p>
+            <button
+              className="btn-primary"
+              style={{ width: '100%', background: infoModal.isError ? '#ef4444' : 'linear-gradient(135deg, var(--accent-purple), var(--accent-pink))' }}
+              onClick={hideInfo}
+            >
+              Aceptar
+            </button>
           </div>
         </div>
       )}
