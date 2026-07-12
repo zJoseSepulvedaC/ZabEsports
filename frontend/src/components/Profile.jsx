@@ -243,8 +243,8 @@ export default function Profile({
                           <span style={{ fontSize: '0.82rem', color: isThisCaptain ? 'var(--accent-cyan)' : 'var(--text-light)' }}>
                             {isThisCaptain ? '👑' : '👤'} @{memberName}
                           </span>
-                          {/* Botón expulsar: solo capitán puede expulsar a no-capitanes */}
-                          {isCaptain && !isThisCaptain && (
+                          {/* Botón expulsar: solo capitán puede expulsar a otros miembros, no a sí mismo */}
+                          {isCaptain && memberId !== currentUser?.id && !isThisCaptain && (
                             <button
                               onClick={() => handleKickMember(team.id, memberId, memberName)}
                               style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', padding: '0.1rem 0.4rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}

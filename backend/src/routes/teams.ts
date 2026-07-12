@@ -129,7 +129,7 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): P
 router.delete('/:id/members/:userId', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
   const { id, userId } = req.params;
   try {
-    const check = await query('SELECT captain_id FROM teams WHERE id = $1', [id]);
+    const check = await query('SELECT captain_id FROM teams WHERE id = $1::uuid', [id]);
     if (check.rows.length === 0) {
       res.status(404).json({ error: 'Equipo no encontrado.' });
       return;
@@ -143,7 +143,7 @@ router.delete('/:id/members/:userId', authMiddleware, async (req: AuthRequest, r
       return;
     }
     const result = await query(
-      'DELETE FROM team_members WHERE team_id = $1 AND user_id = $2 RETURNING user_id',
+      'DELETE FROM team_members WHERE team_id = $1::uuid AND user_id = $2::uuid RETURNING user_id',
       [id, userId]
     );
     if (result.rows.length === 0) {
@@ -152,7 +152,7 @@ router.delete('/:id/members/:userId', authMiddleware, async (req: AuthRequest, r
     }
     res.json({ message: 'Miembro expulsado con éxito.' });
   } catch (err) {
-    console.error('Error al expulsar miembro:', err);
+    console.error('Error detallado al expulsar miembro:', err);
     res.status(500).json({ error: 'Error interno al expulsar el miembro.' });
   }
 });
