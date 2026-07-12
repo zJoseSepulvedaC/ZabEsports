@@ -249,6 +249,9 @@ function App() {
   const [passwordInput, setPasswordInput] = useState('');
   const [authError, setAuthError] = useState('');
   const [authSuccess, setAuthSuccess] = useState('');
+
+  // Modal de confirmación global (reemplaza window.confirm)
+  const [confirmModal, setConfirmModal] = useState({ show: false, message: '', onConfirm: null });
   
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState('');
@@ -336,6 +339,12 @@ function App() {
   const [reportType, setReportType] = useState(''); // 'post', 'community', 'tournament'
   const [reportTargetId, setReportTargetId] = useState(null);
   const [reportReason, setReportReason] = useState('');
+
+  // Helper: muestra el modal de confirmación estilizado
+  const showConfirm = (message, onConfirm) => {
+    setConfirmModal({ show: true, message, onConfirm });
+  };
+  const hideConfirm = () => setConfirmModal({ show: false, message: '', onConfirm: null });
 
   const fetchInvitations = () => {
     if (!token) return;
@@ -582,18 +591,19 @@ function App() {
 
   const handleDeletePost = async (id) => {
     if (!token) return;
-    if (!window.confirm('¿Seguro que deseas eliminar esta publicación?')) return;
-    try {
-      const res = await fetch(`${API_URL}/api/posts/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setPosts(posts.filter(p => p.id !== id));
+    showConfirm('¿Seguro que deseas eliminar esta publicación?', async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/posts/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          setPosts(posts.filter(p => p.id !== id));
+        }
+      } catch (err) {
+        console.error('Error al eliminar post:', err);
       }
-    } catch (err) {
-      console.error('Error al eliminar post:', err);
-    }
+    });
   };
 
   const handleEditPostSubmit = async (e) => {
@@ -929,75 +939,77 @@ function App() {
 
   const handleLeaveCommunity = async (id) => {
     if (!token) return;
-    if (!window.confirm('¿Seguro que deseas salir de esta comunidad?')) return;
-    try {
-      const res = await fetch(`${API_URL}/api/communities/${id}/leave`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchCommunities();
+    showConfirm('¿Seguro que deseas salir de esta comunidad?', async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/communities/${id}/leave`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) fetchCommunities();
+      } catch (err) {
+        console.error('Error al salir de comunidad:', err);
       }
-    } catch (err) {
-      console.error('Error al salir de comunidad:', err);
-    }
+    });
   };
 
   const handleDeleteCommunity = async (id) => {
     if (!token) return;
-    if (!window.confirm('¿Seguro que deseas eliminar esta comunidad? Se perderá todo su contenido.')) return;
-    try {
-      const res = await fetch(`${API_URL}/api/communities/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchCommunities();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error al eliminar comunidad');
+    showConfirm('¿Seguro que deseas eliminar esta comunidad? Se perderá todo su contenido.', async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/communities/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          fetchCommunities();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Error al eliminar comunidad');
+        }
+      } catch (err) {
+        console.error('Error al eliminar comunidad:', err);
       }
-    } catch (err) {
-      console.error('Error al eliminar comunidad:', err);
-    }
+    });
   };
 
   const handleLeaveTournament = async (id) => {
     if (!token) return;
-    if (!window.confirm('¿Seguro que deseas anular tu inscripción de este torneo?')) return;
-    try {
-      const res = await fetch(`${API_URL}/api/tournaments/${id}/register`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchTournaments();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error al anular inscripción');
+    showConfirm('¿Seguro que deseas anular tu inscripción de este torneo?', async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/tournaments/${id}/register`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          fetchTournaments();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Error al anular inscripción');
+        }
+      } catch (err) {
+        console.error('Error al anular inscripción:', err);
       }
-    } catch (err) {
-      console.error('Error al anular inscripción:', err);
-    }
+    });
   };
 
   const handleDeleteTournament = async (id) => {
     if (!token) return;
-    if (!window.confirm('¿Seguro que deseas eliminar este torneo?')) return;
-    try {
-      const res = await fetch(`${API_URL}/api/tournaments/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        fetchTournaments();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Error al eliminar torneo');
+    showConfirm('¿Seguro que deseas eliminar este torneo?', async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/tournaments/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          fetchTournaments();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'Error al eliminar torneo');
+        }
+      } catch (err) {
+        console.error('Error al eliminar torneo:', err);
       }
-    } catch (err) {
-      console.error('Error al eliminar torneo:', err);
-    }
+    });
   };
 
   const filteredPlayers = players.filter(player => {
@@ -1715,6 +1727,37 @@ function App() {
                 </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMACIÓN GLOBAL (reemplaza window.confirm) */}
+      {confirmModal.show && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-card" style={{ maxWidth: '420px', textAlign: 'center' }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>⚠️</div>
+            <h3 style={{ marginBottom: '0.75rem', fontSize: '1.1rem', color: 'var(--text-light)' }}>
+              Confirmar acción
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem', lineHeight: 1.5 }}>
+              {confirmModal.message}
+            </p>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                className="btn-primary"
+                style={{ flex: 1, background: 'linear-gradient(135deg, #ef4444, #b91c1c)', fontWeight: 'bold' }}
+                onClick={() => { confirmModal.onConfirm(); hideConfirm(); }}
+              >
+                Confirmar
+              </button>
+              <button
+                className="btn-primary"
+                style={{ flex: 1, background: 'none', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}
+                onClick={hideConfirm}
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
