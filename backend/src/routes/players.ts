@@ -4,7 +4,7 @@ import http from 'https';
 
 const router = Router();
 
-const RIOT_API_KEY = 'RGAPI-00340dff-acfb-48c4-9abe-9c497f07711b';
+const RIOT_API_KEY = 'RGAPI-62f57d03-cb7f-4f25-8a53-307dbeb031d2';
 
 // Colección de iconos iniciales con sus IDs de Riot reales verificados
 const VERIFICATION_ICONS = [
