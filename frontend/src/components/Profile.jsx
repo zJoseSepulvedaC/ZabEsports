@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function Profile({
   currentUser,
@@ -19,8 +19,12 @@ export default function Profile({
   handleRiotLinkVerify,
   handleCreateTeam,
   handleDeleteTeam,
+  handleKickMember,
+  handleLeaveTeam,
   t
 }) {
+  const [managingTeam, setManagingTeam] = useState(null); // team object being managed
+
   return (
     <div>
       <header className="header">
@@ -209,51 +213,79 @@ export default function Profile({
             No tienes escuadras aún. ¡Crea una para empezar a reclutar jugadores!
           </p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
-            {myTeams.map(team => (
-              <div key={team.id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.25rem' }}>
-                <h4 style={{ color: 'var(--accent-purple)', marginBottom: '0.25rem' }}>{team.name}</h4>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  👥 {team.member_count} {String(team.member_count) === '1' ? 'Miembro' : 'Miembros'}
-                </p>
-                <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.3rem' }}>
-                  {team.members && team.members.map((member, i) => (
-                    <span key={i} style={{ fontSize: '0.7rem', background: 'rgba(139,92,246,0.15)', color: 'var(--accent-purple)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 'bold' }}>
-                      @{member}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+            {myTeams.map(team => {
+              const isCaptain = team.captain_id === currentUser?.id;
+              const members = Array.isArray(team.members) ? team.members : [];
+              return (
+                <div key={team.id} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${isCaptain ? 'rgba(139,92,246,0.4)' : 'var(--border-color)'}`, borderRadius: '10px', padding: '1.25rem' }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                    <div>
+                      <h4 style={{ color: 'var(--accent-purple)', marginBottom: '0.2rem' }}>{team.name}</h4>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        👥 {team.member_count} {String(team.member_count) === '1' ? 'Miembro' : 'Miembros'}
+                      </p>
+                    </div>
+                    <span className="role-badge" style={{ fontSize: '0.65rem', flexShrink: 0 }}>
+                      {isCaptain ? '👑 Capitán' : '🎮 Miembro'}
                     </span>
-                  ))}
+                  </div>
+
+                  {/* Lista de miembros */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1rem' }}>
+                    {members.map((member, i) => {
+                      const memberId = member.id || member;
+                      const memberName = member.username || member;
+                      const isThisCaptain = memberId === team.captain_id;
+                      return (
+                        <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', padding: '0.35rem 0.6rem' }}>
+                          <span style={{ fontSize: '0.82rem', color: isThisCaptain ? 'var(--accent-cyan)' : 'var(--text-light)' }}>
+                            {isThisCaptain ? '👑' : '👤'} @{memberName}
+                          </span>
+                          {/* Botón expulsar: solo capitán puede expulsar a no-capitanes */}
+                          {isCaptain && !isThisCaptain && (
+                            <button
+                              onClick={() => handleKickMember(team.id, memberId, memberName)}
+                              style={{ background: 'none', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '4px', padding: '0.1rem 0.4rem', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
+                              title={`Expulsar a @${memberName}`}
+                            >
+                              Expulsar
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Acciones del equipo */}
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    {isCaptain ? (
+                      <button
+                        onClick={() => handleDeleteTeam(team.id)}
+                        className="btn-primary"
+                        style={{ flex: 1, background: '#ef4444', border: 'none', fontSize: '0.8rem', padding: '0.4rem 0.7rem' }}
+                      >
+                        🗑️ Eliminar Escuadra
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleLeaveTeam(team.id)}
+                        className="btn-primary"
+                        style={{ flex: 1, background: 'none', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)', fontSize: '0.8rem', padding: '0.4rem 0.7rem' }}
+                      >
+                        🚪 Salir de Escuadra
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {team.captain_id === currentUser?.id && (
-                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span className="role-badge" style={{ fontSize: '0.7rem' }}>Capitán</span>
-                    <button
-                      onClick={() => handleDeleteTeam(team.id)}
-                      style={{
-                        marginLeft: 'auto',
-                        background: '#ef4444',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        padding: '0.25rem 0.65rem',
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      🗑️ Eliminar
-                    </button>
-                  </div>
-                )}
-                {team.captain_id !== currentUser?.id && (
-                  <div style={{ marginTop: '0.75rem' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Miembro</span>
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
     </div>
   );
 }
+
+

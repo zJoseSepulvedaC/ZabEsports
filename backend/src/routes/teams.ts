@@ -55,7 +55,7 @@ router.get('/mine', authMiddleware, async (req: AuthRequest, res: Response): Pro
       SELECT t.id, t.name, t.captain_id, t.created_at,
              (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) as member_count,
              (
-                SELECT json_agg(u.username)
+                SELECT json_agg(json_build_object('id', u.id, 'username', u.username))
                 FROM team_members tm2
                 JOIN users u ON u.id = tm2.user_id
                 WHERE tm2.team_id = t.id
@@ -122,6 +122,66 @@ router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response): P
   } catch (err) {
     console.error('Error al eliminar equipo:', err);
     res.status(500).json({ error: 'Error interno al eliminar el equipo.' });
+  }
+});
+
+// DELETE /api/teams/:id/members/:userId — Expulsar miembro (solo el capitán)
+router.delete('/:id/members/:userId', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id, userId } = req.params;
+  try {
+    const check = await query('SELECT captain_id FROM teams WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'Equipo no encontrado.' });
+      return;
+    }
+    if (check.rows[0].captain_id !== req.user!.id) {
+      res.status(403).json({ error: 'Solo el capitán puede expulsar miembros.' });
+      return;
+    }
+    if (userId === req.user!.id) {
+      res.status(400).json({ error: 'El capitán no puede expulsarse a sí mismo. Elimina el equipo si deseas.' });
+      return;
+    }
+    const result = await query(
+      'DELETE FROM team_members WHERE team_id = $1 AND user_id = $2 RETURNING user_id',
+      [id, userId]
+    );
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'El usuario no es miembro de este equipo.' });
+      return;
+    }
+    res.json({ message: 'Miembro expulsado con éxito.' });
+  } catch (err) {
+    console.error('Error al expulsar miembro:', err);
+    res.status(500).json({ error: 'Error interno al expulsar el miembro.' });
+  }
+});
+
+// DELETE /api/teams/:id/leave — Salir del equipo (solo miembros, no el capitán)
+router.delete('/:id/leave', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const check = await query('SELECT captain_id FROM teams WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'Equipo no encontrado.' });
+      return;
+    }
+    if (check.rows[0].captain_id === req.user!.id) {
+      res.status(400).json({ error: 'Eres el capitán. Elimina el equipo si deseas abandonarlo.' });
+      return;
+    }
+    const result = await query(
+      'DELETE FROM team_members WHERE team_id = $1 AND user_id = $2 RETURNING user_id',
+      [id, req.user!.id]
+    );
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'No eres miembro de este equipo.' });
+      return;
+    }
+    res.json({ message: 'Has salido del equipo.' });
+  } catch (err) {
+    console.error('Error al salir del equipo:', err);
+    res.status(500).json({ error: 'Error interno al salir del equipo.' });
   }
 });
 

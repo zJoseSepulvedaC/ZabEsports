@@ -512,13 +512,55 @@ function App() {
         });
         if (res.ok) {
           fetchMyTeams();
-          showInfo('¡Escuadra eliminada con éxito.');
+          showInfo('¡Escuadra eliminada con éxito!');
         } else {
           const data = await res.json();
           showInfo(data.error || 'Error al eliminar escuadra', true);
         }
       } catch (err) {
         console.error('Error al eliminar equipo:', err);
+      }
+    });
+  };
+
+  const handleKickMember = async (teamId, userId, username) => {
+    if (!token) return;
+    showConfirm(`¿Seguro que deseas expulsar a @${username} de la escuadra?`, async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/teams/${teamId}/members/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          fetchMyTeams();
+          showInfo(`@${username} fue expulsado de la escuadra.`);
+        } else {
+          const data = await res.json();
+          showInfo(data.error || 'Error al expulsar miembro', true);
+        }
+      } catch (err) {
+        console.error('Error al expulsar miembro:', err);
+      }
+    });
+  };
+
+  const handleLeaveTeam = async (teamId) => {
+    if (!token) return;
+    showConfirm('¿Seguro que deseas salir de esta escuadra?', async () => {
+      try {
+        const res = await fetch(`${API_URL}/api/teams/${teamId}/leave`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          fetchMyTeams();
+          showInfo('Has salido de la escuadra.');
+        } else {
+          const data = await res.json();
+          showInfo(data.error || 'Error al salir del equipo', true);
+        }
+      } catch (err) {
+        console.error('Error al salir del equipo:', err);
       }
     });
   };
@@ -1272,6 +1314,8 @@ function App() {
             handleRiotLinkVerify={handleRiotLinkVerify}
             handleCreateTeam={handleCreateTeam}
             handleDeleteTeam={handleDeleteTeam}
+            handleKickMember={handleKickMember}
+            handleLeaveTeam={handleLeaveTeam}
             t={t}
           />
         )}
