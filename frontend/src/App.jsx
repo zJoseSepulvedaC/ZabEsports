@@ -1334,6 +1334,7 @@ function App() {
           <AdminPanel
             token={token}
             API_URL={API_URL}
+            onUserDeleted={fetchPlayers}
           />
         )}
       </main>

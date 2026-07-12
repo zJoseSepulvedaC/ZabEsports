@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function AdminPanel({ token, API_URL }) {
+export default function AdminPanel({ token, API_URL, onUserDeleted }) {
   const [activeTab, setActiveTab] = useState('users'); // users, communities, tournaments
   
   const [users, setUsers] = useState([]);
@@ -69,6 +69,7 @@ export default function AdminPanel({ token, API_URL }) {
           });
           if (res.ok) {
             setUsers(users => users.filter(u => u.id !== id));
+            if (onUserDeleted) onUserDeleted();
           } else {
             const data = await res.json();
             alert(data.error || 'Error al eliminar usuario');
