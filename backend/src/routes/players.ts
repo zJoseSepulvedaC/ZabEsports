@@ -8,7 +8,7 @@ const RIOT_API_KEY = 'RGAPI-62f57d03-cb7f-4f25-8a53-307dbeb031d2';
 
 // Colección de iconos iniciales con sus IDs de Riot reales verificados
 const VERIFICATION_ICONS = [
-  { id: 0,   name: 'Iniciador Espadas Cruzadas' },
+  { id: 0,   name: 'Blue Minion Bruiser Icon' },
   { id: 7,   name: 'Rosa Roja Clásica' },
   { id: 15,  name: 'Invocador Clásico Verde (Pócima)' },
   { id: 11,  name: 'Reptil Verde (Zarpazo)' }
