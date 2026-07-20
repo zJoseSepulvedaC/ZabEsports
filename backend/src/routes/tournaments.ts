@@ -719,7 +719,7 @@ router.post('/debug/seed-test', async (req: Request, res: Response): Promise<voi
     for (let i = 1; i <= 8; i++) {
       const uRes = await query(`
         INSERT INTO users (username, email, password_hash, role)
-        VALUES ($1, $2, $3, 'player')
+        VALUES ($1, $2, $3, 'usuario')
         ON CONFLICT (email) DO UPDATE SET username = EXCLUDED.username
         RETURNING id
       `, [`TestCapitan${i}`, `testcap${i}@test.com`, 'hash']);

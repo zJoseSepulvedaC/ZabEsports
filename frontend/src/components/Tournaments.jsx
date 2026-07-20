@@ -1222,6 +1222,28 @@ export default function Tournaments({
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
 
+  const [showSeedModal, setShowSeedModal] = useState(false);
+  const [seedLoading, setSeedLoading] = useState(false);
+  const [seedError, setSeedError] = useState(null);
+
+  const handleSeedTest = async () => {
+    setSeedLoading(true);
+    setSeedError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/tournaments/debug/seed-test`, { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = `/torneos/${data.tournamentId}`;
+      } else {
+        setSeedError(data.error);
+        setSeedLoading(false);
+      }
+    } catch (e) {
+      setSeedError('Error de conexión');
+      setSeedLoading(false);
+    }
+  };
+
   const openDetail = async (tourney) => {
     setDetailTourney(tourney);
     setLoadingDetail(true);
@@ -1272,6 +1294,25 @@ export default function Tournaments({
         />
       )}
 
+      {/* Seed Modal */}
+      {showSeedModal && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <h3 style={{ color: '#fff', marginBottom: '1rem' }}>Generar Torneo de Prueba</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              ¿Estás seguro de que deseas crear un torneo de prueba con 8 equipos automáticos?
+            </p>
+            {seedError && <div style={{ color: '#ff4d4d', marginBottom: '1rem', padding: '0.5rem', background: 'rgba(255,0,0,0.1)', borderRadius: '4px' }}>{seedError}</div>}
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button className="btn-secondary" onClick={() => { setShowSeedModal(false); setSeedError(null); }} disabled={seedLoading}>Cancelar</button>
+              <button className="btn-primary" onClick={handleSeedTest} disabled={seedLoading} style={{ background: 'var(--accent-purple)' }}>
+                {seedLoading ? 'Generando...' : 'Aceptar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="header">
         <h1>Tournaments</h1>
@@ -1280,20 +1321,7 @@ export default function Tournaments({
             <button 
               className="btn-primary" 
               style={{ background: 'var(--surface-color)', border: '1px solid var(--accent-purple)' }}
-              onClick={async () => {
-                if (!window.confirm('¿Crear torneo de prueba con 8 equipos automáticos?')) return;
-                try {
-                  const res = await fetch(`${API_URL}/api/tournaments/debug/seed-test`, { method: 'POST' });
-                  const data = await res.json();
-                  if (data.success) {
-                    window.location.href = `/torneos/${data.tournamentId}`;
-                  } else {
-                    alert('Error: ' + data.error);
-                  }
-                } catch (e) {
-                  alert('Error de conexión');
-                }
-              }}
+              onClick={() => setShowSeedModal(true)}
             >
               🛠️ Torneo de Prueba
             </button>
