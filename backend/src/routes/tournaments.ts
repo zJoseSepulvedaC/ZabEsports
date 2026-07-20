@@ -315,4 +315,111 @@ router.get('/:id/teams', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+import { registerTournament, generateTournamentCodes } from '../services/riotTournamentService';
+
+// GET /api/tournaments/:id/matches — Obtener partidas con código de torneo
+router.get('/:id/matches', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await query(`
+      SELECT id, team1_name, team2_name, tournament_code, status, created_at
+      FROM tournament_matches
+      WHERE tournament_id = $1
+      ORDER BY created_at DESC
+    `, [req.params.id]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error al obtener partidas:', err);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// POST /api/tournaments/:id/register-riot — Vincular torneo con Riot
+router.post('/:id/register-riot', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const check = await query('SELECT name, organizer_id, riot_tournament_id FROM tournaments WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'Torneo no encontrado.' });
+      return;
+    }
+    const t = check.rows[0];
+    
+    if (t.organizer_id !== req.user!.id && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'No tienes permisos.' });
+      return;
+    }
+
+    if (t.riot_tournament_id) {
+      res.status(400).json({ error: 'Este torneo ya está vinculado a Riot.' });
+      return;
+    }
+
+    // Para efectos de desarrollo, asumimos un providerId fijo (por ej. 1) si no lo tenemos en DB.
+    // En producción deberíamos llamar a registerProvider() una vez y guardarlo en una tabla config.
+    const DUMMY_PROVIDER_ID = 1; 
+    
+    // Llamada a la API de Riot
+    const riotTourneyId = await registerTournament(DUMMY_PROVIDER_ID, t.name);
+
+    // Guardamos en la base de datos local
+    await query('UPDATE tournaments SET riot_tournament_id = $1 WHERE id = $2', [riotTourneyId, id]);
+
+    res.json({ message: 'Torneo vinculado exitosamente con Riot', riot_tournament_id: riotTourneyId });
+  } catch (err: any) {
+    console.error('Error vinculando torneo:', err.message);
+    res.status(500).json({ error: 'Error al vincular el torneo con Riot.' });
+  }
+});
+
+// POST /api/tournaments/:id/generate-match — Generar partida y código
+router.post('/:id/generate-match', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { team1_name, team2_name } = req.body;
+
+  try {
+    const check = await query('SELECT organizer_id, riot_tournament_id FROM tournaments WHERE id = $1', [id]);
+    if (check.rows.length === 0) {
+      res.status(404).json({ error: 'Torneo no encontrado.' });
+      return;
+    }
+    const t = check.rows[0];
+    
+    if (t.organizer_id !== req.user!.id && req.user!.role !== 'admin') {
+      res.status(403).json({ error: 'No tienes permisos.' });
+      return;
+    }
+
+    if (!t.riot_tournament_id) {
+      res.status(400).json({ error: 'Primero debes vincular el torneo con Riot.' });
+      return;
+    }
+
+    // Llamada a la API de Riot para pedir 1 código
+    const codes = await generateTournamentCodes({
+      tournamentId: t.riot_tournament_id,
+      teamSize: 5,
+      mapType: 'SUMMONERS_RIFT',
+      pickType: 'TOURNAMENT_DRAFT',
+      spectatorType: 'ALL'
+    });
+
+    if (!codes || codes.length === 0) {
+      throw new Error('Riot no devolvió códigos.');
+    }
+
+    const tournamentCode = codes[0];
+
+    // Guardar en la DB
+    const result = await query(`
+      INSERT INTO tournament_matches (tournament_id, team1_name, team2_name, tournament_code)
+      VALUES ($1, $2, $3, $4) RETURNING *
+    `, [id, team1_name, team2_name, tournamentCode]);
+
+    res.status(201).json({ message: 'Partida y código generados', match: result.rows[0] });
+  } catch (err: any) {
+    console.error('Error generando match:', err.message);
+    res.status(500).json({ error: 'Error al generar código en Riot.' });
+  }
+});
+
 export default router;

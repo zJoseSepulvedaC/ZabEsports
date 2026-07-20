@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
     status       VARCHAR(20) NOT NULL DEFAULT 'OPEN'
                    CHECK (status IN ('OPEN', 'ONGOING', 'FINISHED')),
     is_approved  BOOLEAN NOT NULL DEFAULT FALSE,
+    riot_tournament_id INT,
     start_date   TIMESTAMP WITH TIME ZONE NOT NULL,
     created_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at   TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -89,6 +90,21 @@ CREATE TABLE IF NOT EXISTS tournament_registrations (
 );
 
 CREATE INDEX IF NOT EXISTS idx_registrations_tournament ON tournament_registrations(tournament_id);
+
+-- ============================================================
+-- TABLA: tournament_matches
+-- ============================================================
+CREATE TABLE IF NOT EXISTS tournament_matches (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+    team1_name    VARCHAR(100) NOT NULL,
+    team2_name    VARCHAR(100) NOT NULL,
+    tournament_code VARCHAR(255) UNIQUE NOT NULL,
+    status        VARCHAR(20) DEFAULT 'PENDIENTE',
+    created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_matches_tournament ON tournament_matches(tournament_id);
 
 -- ============================================================
 -- TABLA: posts

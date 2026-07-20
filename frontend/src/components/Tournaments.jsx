@@ -16,8 +16,57 @@ export default function Tournaments({
   const [expandedTourneyId, setExpandedTourneyId] = useState(null);
   const [registeredTeams, setRegisteredTeams] = useState([]);
   const [loadingTeams, setLoadingTeams] = useState(false);
+  const [matches, setMatches] = useState({});
+  const [riotLoading, setRiotLoading] = useState(false);
 
   const API_URL = 'https://zabesports-api-aje2efc6adawfyh0.eastus2-01.azurewebsites.net';
+
+  const handleLinkRiot = async (tourneyId) => {
+    try {
+      setRiotLoading(true);
+      const res = await fetch(`${API_URL}/api/tournaments/${tourneyId}/register-riot`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Torneo vinculado exitosamente con Riot Games!');
+        window.location.reload(); // Para refrescar el estado del torneo
+      } else {
+        alert(data.error || 'Error al vincular con Riot');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error de conexión');
+    } finally {
+      setRiotLoading(false);
+    }
+  };
+
+  const handleGenerateMatch = async (tourneyId, team1_name, team2_name) => {
+    if (!team1_name || !team2_name) return alert('Debes seleccionar 2 equipos');
+    try {
+      setRiotLoading(true);
+      const res = await fetch(`${API_URL}/api/tournaments/${tourneyId}/generate-match`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ team1_name, team2_name })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Código de torneo generado!');
+        toggleExpand(tourneyId); // recargar
+      } else {
+        alert(data.error || 'Error al generar código');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error de conexión');
+    } finally {
+      setRiotLoading(false);
+    }
+  };
+
 
   const toggleExpand = async (tourneyId) => {
     if (expandedTourneyId === tourneyId) {
@@ -36,8 +85,13 @@ export default function Tournaments({
         const data = await res.json();
         setRegisteredTeams(Array.isArray(data) ? data : []);
       }
+      const resMatches = await fetch(`${API_URL}/api/tournaments/${tourneyId}/matches`);
+      if (resMatches.ok) {
+        const mData = await resMatches.json();
+        setMatches(prev => ({...prev, [tourneyId]: mData}));
+      }
     } catch (err) {
-      console.error('Error al obtener equipos de Battlefy:', err);
+      console.error('Error al obtener datos del torneo:', err);
     } finally {
       setLoadingTeams(false);
     }
@@ -165,6 +219,83 @@ export default function Tournaments({
                       ))}
                     </div>
                   )}
+
+                  {/* SECCION RIOT TOURNAMENT API (Panel del Organizador y Partidas) */}
+                  <div style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(235, 20, 76, 0.05)', border: '1px solid rgba(235, 20, 76, 0.3)', borderRadius: '8px' }}>
+                    <h5 style={{ fontSize: '1rem', color: '#eb144c', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ fontSize: '1.2rem' }}>👊</span> Riot Games Tournament API
+                    </h5>
+                    
+                    {tourney.organizer_username === currentUser?.username && (
+                      <div style={{ marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                          Como organizador, puedes vincular este torneo a Riot Games para generar Tournament Codes oficiales.
+                        </p>
+                        {!tourney.riot_tournament_id ? (
+                          <button 
+                            className="btn-primary" 
+                            style={{ background: '#eb144c', border: 'none' }}
+                            onClick={() => handleLinkRiot(tourney.id)}
+                            disabled={riotLoading}
+                          >
+                            {riotLoading ? 'Vinculando...' : '🔗 Vincular con Riot Games'}
+                          </button>
+                        ) : (
+                          <div>
+                            <span style={{ display: 'inline-block', marginBottom: '1rem', padding: '0.3rem 0.6rem', background: 'rgba(0, 255, 100, 0.1)', color: '#00ff64', borderRadius: '4px', fontSize: '0.8rem', border: '1px solid #00ff64' }}>
+                              ✅ Torneo Vinculado (Riot ID: {tourney.riot_tournament_id})
+                            </span>
+                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                              <select id={`team1-${tourney.id}`} style={{ padding: '0.5rem', background: 'var(--bg-darker)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
+                                <option value="">Selecciona Equipo 1</option>
+                                {registeredTeams.map(t => <option key={t.team_id} value={t.team_name}>{t.team_name}</option>)}
+                              </select>
+                              <span style={{ color: 'var(--text-muted)' }}>VS</span>
+                              <select id={`team2-${tourney.id}`} style={{ padding: '0.5rem', background: 'var(--bg-darker)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
+                                <option value="">Selecciona Equipo 2</option>
+                                {registeredTeams.map(t => <option key={t.team_id} value={t.team_name}>{t.team_name}</option>)}
+                              </select>
+                              <button 
+                                className="btn-primary"
+                                style={{ background: 'linear-gradient(135deg, #eb144c, #ff4b72)', border: 'none' }}
+                                disabled={riotLoading}
+                                onClick={() => {
+                                  const t1 = document.getElementById(`team1-${tourney.id}`).value;
+                                  const t2 = document.getElementById(`team2-${tourney.id}`).value;
+                                  handleGenerateMatch(tourney.id, t1, t2);
+                                }}
+                              >
+                                {riotLoading ? 'Generando...' : '⚔️ Generar Código de Torneo'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div>
+                      <h6 style={{ fontSize: '0.9rem', color: '#fff', marginBottom: '1rem' }}>Llaves y Códigos Activos</h6>
+                      {!matches[tourney.id] || matches[tourney.id].length === 0 ? (
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No hay partidas generadas con código de Riot aún.</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {matches[tourney.id].map(match => (
+                            <div key={match.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '0.8rem 1rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                              <div style={{ fontWeight: '500', color: '#fff' }}>
+                                {match.team1_name} <span style={{ color: '#eb144c', margin: '0 0.5rem' }}>VS</span> {match.team2_name}
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                <span style={{ fontFamily: 'monospace', background: '#000', padding: '0.4rem 0.8rem', borderRadius: '4px', border: '1px solid #333', color: '#00ff64', userSelect: 'all' }}>
+                                  {match.tournament_code}
+                                </span>
+                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{match.status}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
