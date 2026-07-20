@@ -73,6 +73,13 @@ describe('POST /api/tournaments', () => {
   it('debe crear un torneo correctamente estando autenticado', async () => {
     const token = makeToken('usuario');
 
+    // Mock 1: slug uniqueness check — devuelve vacío → slug disponible
+    mockQuery.mockResolvedValueOnce({
+      rows: [],
+      command: 'SELECT', rowCount: 0, oid: 0, fields: []
+    } as any);
+
+    // Mock 2: INSERT del torneo
     mockQuery.mockResolvedValueOnce({
       rows: [
         {
@@ -101,6 +108,7 @@ describe('POST /api/tournaments', () => {
     expect(res.body.tournament.name).toBe('Torneo Pro LoL');
     expect(res.body.tournament.is_approved).toBe(false);
   });
+
 });
 
 // ============================================================
