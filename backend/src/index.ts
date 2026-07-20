@@ -16,6 +16,20 @@ import reportsRouter     from './routes/reports';
 dotenv.config();
 
 // Las migraciones de base de datos se ejecutan en el despliegue inicial y se remueven de aquí para evitar bloqueos por concurrencia en Azure.
+pool.query(`
+    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS riot_tournament_id INT;
+    CREATE TABLE IF NOT EXISTS tournament_matches (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+        team1_name VARCHAR(100) NOT NULL,
+        team2_name VARCHAR(100) NOT NULL,
+        tournament_code VARCHAR(255) UNIQUE NOT NULL,
+        status VARCHAR(20) DEFAULT 'PENDIENTE',
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_matches_tournament ON tournament_matches(tournament_id);
+`).then(() => console.log('Migración automática de Riot completada en Azure.'))
+  .catch((e) => console.error('Error en migración automática:', e));
 
 const app = express();
 const PORT = process.env.PORT || 5000;
