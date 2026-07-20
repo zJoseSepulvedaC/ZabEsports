@@ -700,19 +700,20 @@ router.post('/:t_id/matches/:m_id/chat', authMiddleware, async (req: AuthRequest
 });
 
 // ============================================================
-// GET /api/tournaments/debug/seed-test
+// POST /api/tournaments/debug/seed-test
 // ============================================================
-router.get('/debug/seed-test', async (req: Request, res: Response): Promise<void> => {
+router.post('/debug/seed-test', async (req: Request, res: Response): Promise<void> => {
   try {
+    // Buscar al usuario que solicita como organizador
     const userRes = await query(`SELECT id FROM users WHERE username = 'Zabat' LIMIT 1`);
-    if (userRes.rows.length === 0) { res.status(404).send('Zabat no encontrado'); return; }
+    if (userRes.rows.length === 0) { res.status(404).json({ error: 'Zabat no encontrado' }); return; }
     const organizerId = userRes.rows[0].id;
 
     const tRes = await query(`
-      INSERT INTO tournaments (title, game, format, region, max_teams, start_date, organizer_id, status)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO tournaments (name, game, game_format, tournament_format, game_region, max_teams, start_date, organizer_id, status, slug)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id
-    `, ['Test Riot API Brackets', 'League of Legends', 'Pre-Made Teams', 'Latin America South', 16, new Date(), organizerId, 'DRAFT']);
+    `, ['Test Riot API Brackets ' + Date.now(), 'League of Legends', 'Pre-Made Teams', 'elimination', 'Latin America South', 16, new Date(), organizerId, 'DRAFT', 'test-riot-' + Date.now()]);
     const tId = tRes.rows[0].id;
 
     for (let i = 1; i <= 8; i++) {
@@ -733,9 +734,9 @@ router.get('/debug/seed-test', async (req: Request, res: Response): Promise<void
 
       await query(`INSERT INTO tournament_registrations (tournament_id, team_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [tId, teamId]);
     }
-    res.send(`<script>window.location.href="https://polite-mud-0a1c8430f.7.azurestaticapps.net/torneos/${tId}";</script>`);
+    res.json({ success: true, tournamentId: tId });
   } catch (err: any) {
-    res.status(500).send(err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 

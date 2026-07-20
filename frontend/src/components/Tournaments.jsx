@@ -1275,9 +1275,33 @@ export default function Tournaments({
       {/* Header */}
       <header className="header">
         <h1>Tournaments</h1>
-        <button className="btn-primary" onClick={() => setShowWizard(true)}>
-          + {t.createTournament || 'Create Tournament'}
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          {(currentUser?.role === 'admin' || currentUser?.role === 'moderador') && (
+            <button 
+              className="btn-primary" 
+              style={{ background: 'var(--surface-color)', border: '1px solid var(--accent-purple)' }}
+              onClick={async () => {
+                if (!window.confirm('¿Crear torneo de prueba con 8 equipos automáticos?')) return;
+                try {
+                  const res = await fetch(`${API_URL}/api/tournaments/debug/seed-test`, { method: 'POST' });
+                  const data = await res.json();
+                  if (data.success) {
+                    window.location.href = `/torneos/${data.tournamentId}`;
+                  } else {
+                    alert('Error: ' + data.error);
+                  }
+                } catch (e) {
+                  alert('Error de conexión');
+                }
+              }}
+            >
+              🛠️ Torneo de Prueba
+            </button>
+          )}
+          <button className="btn-primary" onClick={() => setShowWizard(true)}>
+            + {t.createTournament || 'Create Tournament'}
+          </button>
+        </div>
       </header>
 
       {/* Search + View Toggle */}
