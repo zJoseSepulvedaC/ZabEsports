@@ -732,6 +732,19 @@ router.post('/debug/seed-test', async (req: Request, res: Response): Promise<voi
       `, [`Riot Test Team ${i}`, cId]);
       const teamId = teamRes.rows[0].id;
 
+      await query(`INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [teamId, cId]);
+
+      for (let j = 1; j <= 4; j++) {
+        const pRes = await query(`
+          INSERT INTO users (username, email, password_hash, role)
+          VALUES ($1, $2, $3, 'usuario')
+          ON CONFLICT (email) DO UPDATE SET username = EXCLUDED.username
+          RETURNING id
+        `, [`TestPlayer${j}_T${i}`, `t${i}p${j}@test.com`, 'hash']);
+        const pId = pRes.rows[0].id;
+        await query(`INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [teamId, pId]);
+      }
+
       await query(`INSERT INTO tournament_registrations (tournament_id, team_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [tId, teamId]);
     }
     res.json({ success: true, tournamentId: tId });
