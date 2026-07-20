@@ -24,35 +24,6 @@ function generateJoinCode(): string {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-/** Builds the bracket structure for an elimination tournament */
-function buildEliminationBracket(teams: string[]): Array<{ round: number; matchNum: number; team1: string | null; team2: string | null }> {
-  const n = teams.length;
-  const nextPow2 = Math.pow(2, Math.ceil(Math.log2(n)));
-  const byes = nextPow2 - n;
-
-  // Pad with BYE slots
-  const seeded: (string | null)[] = [...teams];
-  for (let i = 0; i < byes; i++) seeded.push(null);
-
-  const matches: Array<{ round: number; matchNum: number; team1: string | null; team2: string | null }> = [];
-  let matchNum = 1;
-  for (let i = 0; i < seeded.length; i += 2) {
-    matches.push({ round: 1, matchNum: matchNum++, team1: seeded[i], team2: seeded[i + 1] });
-  }
-  return matches;
-}
-
-/** Builds round-robin matches (every team vs every other) */
-function buildRoundRobinBracket(teams: string[]): Array<{ round: number; matchNum: number; team1: string; team2: string }> {
-  const matches: Array<{ round: number; matchNum: number; team1: string; team2: string }> = [];
-  let matchNum = 1;
-  for (let i = 0; i < teams.length; i++) {
-    for (let j = i + 1; j < teams.length; j++) {
-      matches.push({ round: 1, matchNum: matchNum++, team1: teams[i], team2: teams[j] });
-    }
-  }
-  return matches;
-}
 
 // ============================================================
 // GET /api/tournaments — Lista de torneos
@@ -500,83 +471,16 @@ router.post('/:id/generate-brackets', authMiddleware, async (req: AuthRequest, r
       res.status(403).json({ error: 'No tienes permisos.' }); return;
     }
 
-    // Obtener equipos inscritos
-    const teamsResult = await query(`
-      SELECT DISTINCT t.name AS team_name
-      FROM tournament_registrations tr
-      JOIN teams t ON t.id = tr.team_id
-      WHERE tr.tournament_id = $1
-    `, [id]);
-
-    if (teamsResult.rows.length < 2) {
-      res.status(400).json({ error: 'Se necesitan al menos 2 equipos para generar brackets.' });
-      return;
-    }
-
-    const teamNames: string[] = teamsResult.rows.map((r: { team_name: string }) => r.team_name);
-    // Shuffle teams randomly (Fisher-Yates)
-    for (let i = teamNames.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [teamNames[i], teamNames[j]] = [teamNames[j], teamNames[i]];
-    }
-
-    // Limpiar matches anteriores
-    await query('DELETE FROM tournament_matches WHERE tournament_id = $1', [id]);
-
-    let matchRows: Array<{ round: number; matchNum: number; team1: string | null; team2: string | null }> = [];
-
-    const bracketType = tourney.bracket_type || 'elimination';
-    if (bracketType === 'round_robin') {
-      matchRows = buildRoundRobinBracket(teamNames);
-    } else {
-      // Default: elimination
-      matchRows = buildEliminationBracket(teamNames);
-    }
-
-    // Intentar generar Riot codes (si están vinculados)
-    let riotCodes: string[] = [];
-    if (tourney.riot_tournament_id) {
-      try {
-        const realMatches = matchRows.filter(m => m.team1 && m.team2);
-        riotCodes = await generateTournamentCodes({
-          tournamentId: tourney.riot_tournament_id,
-          teamSize: tourney.min_players_per_team || 5,
-          mapType: 'SUMMONERS_RIFT',
-          pickType: 'TOURNAMENT_DRAFT',
-          spectatorType: 'ALL'
-        }, realMatches.length);
-      } catch (riotErr) {
-        console.warn('No se pudieron generar códigos de Riot:', riotErr);
-      }
-    }
-
-    // Insertar matches en la DB
-    let riotCodeIndex = 0;
-    const insertedMatches = [];
-    for (const m of matchRows) {
-      const isBye = !m.team2; // BYE slot
-      const code = (!isBye && riotCodes[riotCodeIndex]) ? riotCodes[riotCodeIndex++] : null;
-      const status = isBye ? 'BYE' : 'PENDIENTE';
-
-      const matchResult = await query(`
-        INSERT INTO tournament_matches
-          (tournament_id, team1_name, team2_name, tournament_code, status, round_num, match_num)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING *
-      `, [id, m.team1, m.team2, code, status, m.round, m.matchNum]);
-      insertedMatches.push(matchResult.rows[0]);
-    }
-
-    // Cambiar estado a ONGOING
-    await query(`UPDATE tournaments SET status = 'ONGOING', updated_at = NOW() WHERE id = $1`, [id]);
+    const { generateBracketsForTournament } = await import('../services/bracketService');
+    const insertedMatches = await generateBracketsForTournament(id);
 
     res.status(201).json({
-      message: `Brackets generados: ${insertedMatches.length} partidas en Ronda 1.`,
+      message: `Brackets generados: ${insertedMatches.length} partidas.`,
       matches: insertedMatches
     });
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error al generar brackets:', err);
-    res.status(500).json({ error: 'Error interno del servidor al generar brackets.' });
+    res.status(err.message.includes('menos 2 equipos') ? 400 : 500).json({ error: err.message || 'Error interno del servidor al generar brackets.' });
   }
 });
 

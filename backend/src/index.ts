@@ -74,6 +74,25 @@ Promise.all([
   `, 'tournament_matches table'),
   runMigration(`CREATE INDEX IF NOT EXISTS idx_matches_tournament ON tournament_matches(tournament_id)`, 'idx_matches_tournament'),
   runMigration(`CREATE INDEX IF NOT EXISTS idx_matches_round ON tournament_matches(tournament_id, round_num)`, 'idx_matches_round'),
+  // -- tournament_matches table improvements
+  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team1_id UUID REFERENCES teams(id) ON DELETE CASCADE`, 'team1_id'),
+  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team2_id UUID REFERENCES teams(id) ON DELETE CASCADE`, 'team2_id'),
+  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team1_checkin BOOLEAN DEFAULT FALSE`, 'team1_checkin'),
+  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team2_checkin BOOLEAN DEFAULT FALSE`, 'team2_checkin'),
+  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS checkin_deadline TIMESTAMP WITH TIME ZONE`, 'checkin_deadline'),
+  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS winner_team_id UUID REFERENCES teams(id) ON DELETE SET NULL`, 'winner_team_id'),
+  // -- Unique registration
+  runMigration(`ALTER TABLE tournament_registrations ADD CONSTRAINT uq_tournament_team UNIQUE (tournament_id, team_id)`, 'uq_tournament_team').catch(() => console.log('uq_tournament_team ya existe o ignorado')),
+  // -- Match Chats
+  runMigration(`
+    CREATE TABLE IF NOT EXISTS match_chats (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      match_id UUID NOT NULL REFERENCES tournament_matches(id) ON DELETE CASCADE,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      message TEXT NOT NULL,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )
+  `, 'match_chats table'),
 ]).then(() => console.log('✅ Todas las migraciones completadas.'));
 
 
