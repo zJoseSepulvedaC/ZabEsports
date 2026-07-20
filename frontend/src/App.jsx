@@ -241,7 +241,7 @@ function App() {
   const [lang, setLang] = useState('es'); // Idioma global
   const t = translations[lang];
 
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem('zab_token'));
   const [authMode, setAuthMode] = useState('login'); 
   
   const [emailInput, setEmailInput] = useState('');
@@ -256,8 +256,10 @@ function App() {
   // Modal de info/éxito global (reemplaza alert())
   const [infoModal, setInfoModal] = useState({ show: false, message: '', isError: false });
   
-  const [currentUser, setCurrentUser] = useState(null);
-  const [token, setToken] = useState('');
+  const [currentUser, setCurrentUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('zab_user') || 'null'); } catch { return null; }
+  });
+  const [token, setToken] = useState(() => localStorage.getItem('zab_token') || '');
 
   // URL-based routing (no libraries)
   const URL_TAB_MAP = {
@@ -801,6 +803,8 @@ function App() {
       setToken(data.token);
       setCurrentUser(data.user);
       setIsLoggedIn(true);
+      localStorage.setItem('zab_token', data.token);
+      localStorage.setItem('zab_user', JSON.stringify(data.user));
     } catch {
       setAuthError('No se pudo conectar con el servidor de Azure. Verifica la conexión.');
     }
@@ -833,6 +837,8 @@ function App() {
     setIsLoggedIn(false);
     setCurrentUser(null);
     setToken('');
+    localStorage.removeItem('zab_token');
+    localStorage.removeItem('zab_user');
     setEmailInput('');
     setUsernameInput('');
     setPasswordInput('');
@@ -1333,6 +1339,8 @@ function App() {
             onLeaveTournament={handleLeaveTournament}
             onDeleteTournament={handleDeleteTournament}
             communities={communities}
+            onCreated={fetchTournaments}
+            myTeams={myTeams}
           />
         )}
 

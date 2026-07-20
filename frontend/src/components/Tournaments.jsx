@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const API_URL = 'https://zabesports-api-aje2efc6adawfyh0.eastus2-01.azurewebsites.net';
 
@@ -383,12 +383,15 @@ function TournamentWizard({ token, communities, currentUser, onClose, onCreated 
           {/* STEP 4: BRACKETS */}
           {step === 4 && (
             <div className="wizard-step">
-              <h2 className="wizard-title">CREATE</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <h2 className="wizard-title">FORMATO DE BRACKETS</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: '1.6' }}>
+                Selecciona el tipo de bracket para tu torneo. Los brackets se generarán <strong style={{ color: 'var(--accent-cyan)' }}>automáticamente</strong> al cerrarse el período de inscripción (<strong style={{ color: '#fff' }}>{/* start_date */}</strong>fecha y hora del torneo). Solo los equipos inscritos participarán.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
                 {[
-                  { key: 'elimination', label: 'Create an Elimination Bracket', desc: 'Single or double elimination schedule' },
-                  { key: 'round_robin', label: 'Create a Round Robin Bracket', desc: 'Single round robin schedule' },
-                  { key: 'swiss', label: 'Create a Swiss Bracket', desc: 'Single swiss schedule' },
+                  { key: 'elimination', label: 'Eliminación Directa', desc: 'El equipo perdedor queda eliminado. Ideal para torneos rápidos con muchos equipos.' },
+                  { key: 'round_robin', label: 'Round Robin (Todos vs Todos)', desc: 'Cada equipo juega contra todos los demás. Más juego, mejor clasificación.' },
+                  { key: 'swiss', label: 'Sistema Suizo', desc: 'Emparejamiento dinámico según rendimiento. Ideal para torneos largos.' },
                 ].map(b => (
                   <div
                     key={b.key}
@@ -406,6 +409,7 @@ function TournamentWizard({ token, communities, currentUser, onClose, onCreated 
                 ))}
               </div>
             </div>
+
           )}
 
           {/* STEP 5: PUBLISH */}
@@ -630,10 +634,41 @@ function isOrganizer(organizer_username, currentUser) {
 // ============================================================
 // TOURNAMENT DETAIL VIEW (public page, like Battlefy)
 // ============================================================
-function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack, onRegister, onGenerateBrackets }) {
+function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack, onRegister, onGenerateBrackets, onTourneyUpdated }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [generatingBrackets, setGeneratingBrackets] = useState(false);
   const [localMatches, setLocalMatches] = useState(matches || []);
+  const [showManageMenu, setShowManageMenu] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const manageRef = useRef(null);
+
+  // Close manage menu on outside click
+  useEffect(() => {
+    const handler = (e) => { if (manageRef.current && !manageRef.current.contains(e.target)) setShowManageMenu(false); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleTogglePublish = async () => {
+    if (!token) return;
+    setPublishing(true);
+    try {
+      const res = await fetch(`${API_URL}/api/tournaments/${tourney.id}/publish`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ is_published: !tourney.is_published })
+      });
+      if (res.ok) {
+        onTourneyUpdated && onTourneyUpdated();
+      } else {
+        const d = await res.json();
+        alert(d.error || 'Error al actualizar');
+      }
+    } finally {
+      setPublishing(false);
+      setShowManageMenu(false);
+    }
+  };
 
   const refreshMatches = async () => {
     try {
@@ -691,10 +726,43 @@ function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack,
               </div>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              {isOrganizer(tourney.organizer_username, currentUser) && (
-                <button className="btn-primary" style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid var(--border-color)' }}>
-                  ⚙️ Manage
-                </button>
+            {isOrganizer(tourney.organizer_username, currentUser) && (
+                <div style={{ position: 'relative' }} ref={manageRef}>
+                  <button
+                    className="btn-primary"
+                    style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid var(--border-color)' }}
+                    onClick={() => setShowManageMenu(m => !m)}
+                  >
+                    ⚙️ Manage ▾
+                  </button>
+                  {showManageMenu && (
+                    <div style={{
+                      position: 'absolute', right: 0, top: '110%', minWidth: '210px',
+                      background: 'var(--card-bg)', border: '1px solid var(--border-color)',
+                      borderRadius: '10px', zIndex: 100, overflow: 'hidden',
+                      boxShadow: '0 8px 32px rgba(0,0,0,0.4)'
+                    }}>
+                      <button
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.75rem 1rem', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '0.9rem' }}
+                        onMouseEnter={e => e.target.style.background='rgba(255,255,255,0.08)'}
+                        onMouseLeave={e => e.target.style.background='none'}
+                        onClick={handleTogglePublish}
+                        disabled={publishing}
+                      >
+                        {tourney.is_published ? '🔒 Cambiar a Borrador' : '🚀 Publicar Torneo'}
+                      </button>
+                      <div style={{ height: '1px', background: 'var(--border-color)' }} />
+                      <button
+                        style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.75rem 1rem', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.9rem' }}
+                        onMouseEnter={e => e.target.style.background='rgba(255,255,255,0.08)'}
+                        onMouseLeave={e => e.target.style.background='none'}
+                        onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/torneos/${tourney.slug}`); setShowManageMenu(false); }}
+                      >
+                        🔗 Copiar Invite Link
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
               {tourney.is_approved && tourney.status === 'OPEN' && !isOrganizer(tourney.organizer_username, currentUser) && (
                 <button className="btn-primary" onClick={onRegister} style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-pink))' }}>
@@ -715,7 +783,12 @@ function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack,
         <div className="td-info-card">
           <div className="td-info-card-label">Date & Time</div>
           <div className="td-info-card-value">
-            {new Date(tourney.start_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+            {(() => {
+              // Parse date as local noon to avoid UTC-offset day shift
+              const raw = tourney.start_date ? tourney.start_date.split('T')[0] : null;
+              const dateStr = raw ? new Date(`${raw}T12:00:00`).toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : '—';
+              return <span style={{ textTransform: 'capitalize' }}>{dateStr}</span>;
+            })()}
             {tourney.start_time && <><br /><span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{tourney.start_time}</span></>}
           </div>
         </div>
@@ -922,7 +995,7 @@ function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack,
 export default function Tournaments({
   tournaments, loadingTournaments, setShowTourneyModal, setRegisteringTourney,
   translations, lang, t, currentUser, token, onLeaveTournament, onDeleteTournament,
-  communities
+  communities, onCreated, myTeams
 }) {
   const [showWizard, setShowWizard] = useState(false);
   const [detailTourney, setDetailTourney] = useState(null);
@@ -964,6 +1037,7 @@ export default function Tournaments({
         onBack={closeDetail}
         onRegister={() => setRegisteringTourney(detailTourney.id)}
         onGenerateBrackets={() => openDetail(detailTourney)}
+        onTourneyUpdated={onCreated}
       />
     );
   }
@@ -1062,7 +1136,7 @@ export default function Tournaments({
               </div>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                <span>📅 {new Date(tourney.start_date).toLocaleDateString('es-CL')}</span>
+                <span>📅 {tourney.start_date ? new Date(`${tourney.start_date.split('T')[0]}T12:00:00`).toLocaleDateString('es-CL') : '—'}</span>
                 <span>👥 {tourney.registered_teams}/{tourney.max_teams}</span>
                 {tourney.prize_pool && <span>🏆 {tourney.prize_pool}</span>}
                 {tourney.game_region && <span>🌍 {tourney.game_region}</span>}
