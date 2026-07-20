@@ -24,41 +24,41 @@ const runMigration = (sql: string, label: string) =>
     .then(() => console.log(`✅ Migración OK: ${label}`))
     .catch((e) => console.warn(`⚠️ Migración omitida (${label}): ${e.message}`));
 
-Promise.all([
+const migrations = [
   // -- BASICS columns
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS riot_tournament_id INT`, 'riot_tournament_id'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game VARCHAR(100)`, 'game'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS slug VARCHAR(200)`, 'slug'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS header_banner_url TEXT`, 'header_banner_url'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS start_time VARCHAR(20)`, 'start_time'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS riot_tournament_id INT`, 'riot_tournament_id'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game VARCHAR(100)`, 'game'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS slug VARCHAR(200)`, 'slug'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS header_banner_url TEXT`, 'header_banner_url'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS start_time VARCHAR(20)`, 'start_time'),
   // -- INFO columns
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS contact_method VARCHAR(100)`, 'contact_method'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS contact_details TEXT`, 'contact_details'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS critical_rules TEXT`, 'critical_rules'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS rules TEXT`, 'rules'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS prizes TEXT`, 'prizes'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS schedule TEXT`, 'schedule'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS contact_method VARCHAR(100)`, 'contact_method'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS contact_details TEXT`, 'contact_details'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS critical_rules TEXT`, 'critical_rules'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS rules TEXT`, 'rules'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS prizes TEXT`, 'prizes'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS schedule TEXT`, 'schedule'),
   // -- SETTINGS columns
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_region VARCHAR(100) DEFAULT 'Latin America South'`, 'game_region'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_map VARCHAR(100) DEFAULT 'Summoners Rift'`, 'game_map'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_format VARCHAR(100) DEFAULT 'Tournament Draft'`, 'game_format'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS tournament_format VARCHAR(100) DEFAULT 'Pre-Made Teams'`, 'tournament_format'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS min_players_per_team INT DEFAULT 5`, 'min_players_per_team'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS check_in_enabled BOOLEAN DEFAULT FALSE`, 'check_in_enabled'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS check_in_start_time INT DEFAULT 60`, 'check_in_start_time'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS match_score_reporting VARCHAR(50) DEFAULT 'Admins & Players'`, 'match_score_reporting'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS require_screenshots BOOLEAN DEFAULT FALSE`, 'require_screenshots'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS max_team_size INT`, 'max_team_size'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS registration_limit INT`, 'registration_limit'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_region VARCHAR(100) DEFAULT 'Latin America South'`, 'game_region'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_map VARCHAR(100) DEFAULT 'Summoners Rift'`, 'game_map'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_format VARCHAR(100) DEFAULT 'Tournament Draft'`, 'game_format'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS tournament_format VARCHAR(100) DEFAULT 'Pre-Made Teams'`, 'tournament_format'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS min_players_per_team INT DEFAULT 5`, 'min_players_per_team'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS check_in_enabled BOOLEAN DEFAULT FALSE`, 'check_in_enabled'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS check_in_start_time INT DEFAULT 60`, 'check_in_start_time'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS match_score_reporting VARCHAR(50) DEFAULT 'Admins & Players'`, 'match_score_reporting'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS require_screenshots BOOLEAN DEFAULT FALSE`, 'require_screenshots'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS max_team_size INT`, 'max_team_size'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS registration_limit INT`, 'registration_limit'),
   // -- BRACKETS & PUBLISH columns
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS bracket_type VARCHAR(50) DEFAULT 'elimination'`, 'bracket_type'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT FALSE`, 'is_published'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) DEFAULT 'public'`, 'visibility'),
-  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS join_code VARCHAR(20)`, 'join_code'),
-  // -- Unique index on slug (separate from ADD COLUMN so it's idempotent)
-  runMigration(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tournaments_slug ON tournaments(slug) WHERE slug IS NOT NULL`, 'slug_unique_index'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS bracket_type VARCHAR(50) DEFAULT 'elimination'`, 'bracket_type'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT FALSE`, 'is_published'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) DEFAULT 'public'`, 'visibility'),
+  () => runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS join_code VARCHAR(20)`, 'join_code'),
+  // -- Unique index on slug
+  () => runMigration(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tournaments_slug ON tournaments(slug) WHERE slug IS NOT NULL`, 'slug_unique_index'),
   // -- tournament_matches table
-  runMigration(`
+  () => runMigration(`
     CREATE TABLE IF NOT EXISTS tournament_matches (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
@@ -73,21 +73,21 @@ Promise.all([
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )
   `, 'tournament_matches table'),
-  runMigration(`CREATE INDEX IF NOT EXISTS idx_matches_tournament ON tournament_matches(tournament_id)`, 'idx_matches_tournament'),
-  runMigration(`CREATE INDEX IF NOT EXISTS idx_matches_round ON tournament_matches(tournament_id, round_num)`, 'idx_matches_round'),
+  () => runMigration(`CREATE INDEX IF NOT EXISTS idx_matches_tournament ON tournament_matches(tournament_id)`, 'idx_matches_tournament'),
+  () => runMigration(`CREATE INDEX IF NOT EXISTS idx_matches_round ON tournament_matches(tournament_id, round_num)`, 'idx_matches_round'),
   // -- tournament_matches table improvements
-  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS round_num INT DEFAULT 1`, 'round_num'),
-  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS match_num INT DEFAULT 1`, 'match_num'),
-  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team1_id UUID REFERENCES teams(id) ON DELETE CASCADE`, 'team1_id'),
-  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team2_id UUID REFERENCES teams(id) ON DELETE CASCADE`, 'team2_id'),
-  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team1_checkin BOOLEAN DEFAULT FALSE`, 'team1_checkin'),
-  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team2_checkin BOOLEAN DEFAULT FALSE`, 'team2_checkin'),
-  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS checkin_deadline TIMESTAMP WITH TIME ZONE`, 'checkin_deadline'),
-  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS winner_team_id UUID REFERENCES teams(id) ON DELETE SET NULL`, 'winner_team_id'),
+  () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS round_num INT DEFAULT 1`, 'round_num'),
+  () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS match_num INT DEFAULT 1`, 'match_num'),
+  () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team1_id UUID REFERENCES teams(id) ON DELETE CASCADE`, 'team1_id'),
+  () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team2_id UUID REFERENCES teams(id) ON DELETE CASCADE`, 'team2_id'),
+  () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team1_checkin BOOLEAN DEFAULT FALSE`, 'team1_checkin'),
+  () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team2_checkin BOOLEAN DEFAULT FALSE`, 'team2_checkin'),
+  () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS checkin_deadline TIMESTAMP WITH TIME ZONE`, 'checkin_deadline'),
+  () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS winner_team_id UUID REFERENCES teams(id) ON DELETE SET NULL`, 'winner_team_id'),
   // -- Unique registration
-  runMigration(`ALTER TABLE tournament_registrations ADD CONSTRAINT uq_tournament_team UNIQUE (tournament_id, team_id)`, 'uq_tournament_team').catch(() => console.log('uq_tournament_team ya existe o ignorado')),
+  () => runMigration(`ALTER TABLE tournament_registrations ADD CONSTRAINT uq_tournament_team UNIQUE (tournament_id, team_id)`, 'uq_tournament_team').catch(() => console.log('uq_tournament_team ya existe o ignorado')),
   // -- Match Chats
-  runMigration(`
+  () => runMigration(`
     CREATE TABLE IF NOT EXISTS match_chats (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       match_id UUID NOT NULL REFERENCES tournament_matches(id) ON DELETE CASCADE,
@@ -96,7 +96,14 @@ Promise.all([
       created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     )
   `, 'match_chats table'),
-]).then(() => console.log('✅ Todas las migraciones completadas.'));
+];
+
+(async () => {
+  for (const migration of migrations) {
+    await migration();
+  }
+  console.log('✅ Todas las migraciones completadas.');
+})();
 
 
 const app = express();

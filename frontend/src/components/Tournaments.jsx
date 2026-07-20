@@ -870,17 +870,18 @@ function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack,
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => null);
       if (res.ok) {
-        alert(`¡Brackets generados! ${data.matches.length} partidas en Ronda 1.`);
+        alert(`¡Brackets generados! ${data?.matches?.length || 0} partidas en Ronda 1.`);
         await refreshMatches();
         onGenerateBrackets && onGenerateBrackets();
         setActiveTab('brackets');
       } else {
-        alert(data.error || 'Error al generar brackets');
+        alert(data?.error || `Error al generar brackets (Status: ${res.status})`);
       }
     } catch (err) {
-      alert('Error de conexión');
+      console.error('Error in handleGenerateBrackets:', err);
+      alert('Error de conexión o fallo interno al generar brackets.');
     } finally {
       setGeneratingBrackets(false);
     }
