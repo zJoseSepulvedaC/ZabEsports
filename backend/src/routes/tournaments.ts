@@ -305,7 +305,7 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
 
   try {
     const tournament = await query(
-      'SELECT id, max_teams, is_approved, status FROM tournaments WHERE id = $1',
+      'SELECT id, max_teams, is_approved, status, min_players_per_team FROM tournaments WHERE id = $1',
       [req.params.id]
     );
     if (tournament.rows.length === 0) { res.status(404).json({ error: 'Torneo no encontrado.' }); return; }
@@ -314,12 +314,27 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
     if (!t.is_approved) { res.status(400).json({ error: 'Este torneo aún no ha sido aprobado.' }); return; }
     if (t.status !== 'OPEN') { res.status(400).json({ error: 'Las inscripciones están cerradas.' }); return; }
 
+    // Validate tournament capacity
     const registrations = await query(
       'SELECT COUNT(*)::int AS count FROM tournament_registrations WHERE tournament_id = $1',
       [req.params.id]
     );
     if (registrations.rows[0].count >= t.max_teams) {
       res.status(400).json({ error: 'El torneo ya está lleno.' }); return;
+    }
+
+    // Validate team member count
+    const requiredPlayers = t.min_players_per_team || 5;
+    const memberCount = await query(
+      'SELECT COUNT(*)::int AS count FROM team_members WHERE team_id = $1',
+      [team_id]
+    );
+    const actualCount = memberCount.rows[0]?.count || 0;
+    if (actualCount < requiredPlayers) {
+      res.status(400).json({
+        error: `Tu Escuadra necesita al menos ${requiredPlayers} jugadores para inscribirse. Actualmente tiene ${actualCount}.`
+      });
+      return;
     }
 
     const result = await query(
@@ -337,6 +352,7 @@ router.post('/:id/register', authMiddleware, async (req: AuthRequest, res: Respo
     }
   }
 });
+
 
 // ============================================================
 // PUT /api/tournaments/:id — Actualizar torneo

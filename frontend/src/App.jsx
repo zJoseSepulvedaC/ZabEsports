@@ -258,7 +258,40 @@ function App() {
   
   const [currentUser, setCurrentUser] = useState(null);
   const [token, setToken] = useState('');
-  const [activeTab, setActiveTab] = useState('dashboard');
+
+  // URL-based routing (no libraries)
+  const URL_TAB_MAP = {
+    '/torneos': 'tournaments',
+    '/comunidades': 'communities',
+    '/perfil': 'profile',
+    '/moderacion': 'moderation',
+    '/admin': 'admin',
+    '/': 'dashboard',
+    '': 'dashboard',
+  };
+  const TAB_URL_MAP = {
+    tournaments: '/torneos',
+    communities: '/comunidades',
+    profile: '/perfil',
+    moderation: '/moderacion',
+    admin: '/admin',
+    dashboard: '/',
+  };
+
+  const getTabFromURL = () => {
+    const path = window.location.pathname;
+    return URL_TAB_MAP[path] || 'dashboard';
+  };
+
+  const [activeTab, setActiveTabState] = useState(getTabFromURL);
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    const url = TAB_URL_MAP[tab] || '/';
+    if (window.location.pathname !== url) {
+      window.history.pushState({ tab }, '', url);
+    }
+  };
 
   const [communities, setCommunities] = useState([]);
   const [tournaments, setTournaments] = useState([]);
@@ -418,6 +451,16 @@ function App() {
     fetchInvitations();
     fetchMyTeams();
   }, [isLoggedIn, token]);
+
+  // Back/forward button support
+  useEffect(() => {
+    const handlePop = (e) => {
+      const tab = e.state?.tab || getTabFromURL();
+      setActiveTabState(tab);
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, []);
 
   // ============================================================
   // Acciones de Creación (CRUD)

@@ -55,9 +55,11 @@ function TournamentWizard({ token, communities, currentUser, onClose, onCreated 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const toggle = (k) => setForm(f => ({ ...f, [k]: !f[k] }));
 
+  const today = new Date().toISOString().split('T')[0];
+
   const canNext = () => {
     if (step === 0) return !!form.game;
-    if (step === 1) return form.name.trim() && form.start_date;
+    if (step === 1) return form.name.trim() && form.start_date && form.start_date >= today;
     return true;
   };
 
@@ -73,7 +75,9 @@ function TournamentWizard({ token, communities, currentUser, onClose, onCreated 
       });
       const data = await res.json();
       if (res.ok) {
-        setCreated(data);
+        // Override invite_link with the real app URL (backend hardcodes zabesports.com)
+        const realInviteLink = `${window.location.origin}/torneos/${data.tournament.slug}`;
+        setCreated({ ...data, invite_link: realInviteLink });
         setStep(6); // show result screen
         onCreated && onCreated(data.tournament);
       } else {
@@ -191,8 +195,17 @@ function TournamentWizard({ token, communities, currentUser, onClose, onCreated 
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="wizard-field">
-                  <label className="wizard-label">Start Date (DD/MM/YYYY)</label>
-                  <input className="wizard-input" type="date" value={form.start_date} onChange={e => set('start_date', e.target.value)} />
+                  <label className="wizard-label">Start Date</label>
+                  <input
+                    className="wizard-input"
+                    type="date"
+                    value={form.start_date}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={e => set('start_date', e.target.value)}
+                  />
+                  {form.start_date && form.start_date < new Date().toISOString().split('T')[0] && (
+                    <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.35rem' }}>⚠️ La fecha no puede ser en el pasado.</div>
+                  )}
                 </div>
                 <div className="wizard-field">
                   <label className="wizard-label">Start Time</label>
