@@ -544,9 +544,190 @@ function TournamentWizard({ token, communities, currentUser, onClose, onCreated 
 }
 
 // ============================================================
+// MATCH DETAILS MODAL (Check-in & Chat)
+// ============================================================
+function MatchDetailsModal({ match, tournamentId, token, currentUser, onClose, onMatchUpdated }) {
+  const [loading, setLoading] = useState(false);
+  const [chatMsgs, setChatMsgs] = useState([]);
+  const [newMsg, setNewMsg] = useState('');
+  const [chatLoading, setChatLoading] = useState(true);
+
+  // Fetch chat
+  const loadChat = async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/tournaments/${tournamentId}/matches/${match.id}/chat`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setChatMsgs(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadChat();
+    // Refresh chat every 5s while open
+    const interval = setInterval(loadChat, 5000);
+    return () => clearInterval(interval);
+  }, [match.id]);
+
+  const handleCheckIn = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/api/tournaments/${tournamentId}/matches/${match.id}/checkin`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Check-in exitoso!');
+        onMatchUpdated && onMatchUpdated();
+      } else {
+        alert(data.error || 'Error en check-in');
+      }
+    } catch (err) {
+      alert('Error de conexión');
+    }
+    setLoading(false);
+  };
+
+  const handleSendChat = async (e) => {
+    e.preventDefault();
+    if (!newMsg.trim()) return;
+    try {
+      const res = await fetch(`${API_URL}/api/tournaments/${tournamentId}/matches/${match.id}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ message: newMsg })
+      });
+      if (res.ok) {
+        setNewMsg('');
+        loadChat();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1100 }}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', height: '80vh' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h2 style={{ color: '#fff', margin: 0 }}>Detalles de Partida</h2>
+          <button className="btn-secondary" onClick={onClose} style={{ border: 'none', background: 'transparent', fontSize: '1.5rem', padding: '0 0.5rem' }}>✕</button>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '1rem', background: 'rgba(255,255,255,0.02)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: match.team1_name ? '#fff' : 'var(--text-muted)' }}>
+                {match.team1_name || 'TBD'}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: match.team1_checkin ? '#00ff64' : 'var(--text-muted)', marginTop: '0.5rem' }}>
+                {match.team1_checkin ? '✅ CHECK-IN LISTO' : 'Esperando check-in...'}
+              </div>
+            </div>
+            <div style={{ fontSize: '1.5rem', color: 'var(--text-muted)', padding: '0 1rem', fontWeight: '900' }}>VS</div>
+            <div style={{ flex: 1, textAlign: 'center' }}>
+              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: match.team2_name ? '#fff' : 'var(--text-muted)' }}>
+                {match.team2_name || 'TBD'}
+              </div>
+              <div style={{ fontSize: '0.8rem', color: match.team2_checkin ? '#00ff64' : 'var(--text-muted)', marginTop: '0.5rem' }}>
+                {match.team2_checkin ? '✅ CHECK-IN LISTO' : 'Esperando check-in...'}
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
+            {match.status === 'PENDIENTE' && match.team1_name && match.team2_name && (
+              <button 
+                className="btn-primary" 
+                onClick={handleCheckIn}
+                disabled={loading}
+                style={{ background: 'var(--accent-purple)', padding: '0.75rem 2rem' }}
+              >
+                {loading ? 'Cargando...' : 'DAR CHECK-IN'}
+              </button>
+            )}
+            
+            {match.tournament_code && (
+              <div style={{ marginTop: '1.5rem', background: 'rgba(139,92,246,0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--accent-purple)' }}>
+                <div style={{ fontSize: '0.85rem', color: 'var(--accent-purple)', marginBottom: '0.5rem' }}>CÓDIGO DE TORNEO (RIOT GAMES)</div>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                  <code style={{ background: 'rgba(0,0,0,0.3)', padding: '0.5rem 1rem', borderRadius: '4px', letterSpacing: '1px', color: '#fff' }}>
+                    {match.tournament_code}
+                  </code>
+                  <button 
+                    className="btn-secondary" 
+                    onClick={() => navigator.clipboard.writeText(match.tournament_code)}
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    Copiar
+                  </button>
+                </div>
+              </div>
+            )}
+            
+            {match.winner_team_name && (
+              <div style={{ marginTop: '1rem', color: '#f59e0b', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                🏆 GANADOR: {match.winner_team_name}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Chat Section */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+          <div style={{ background: 'rgba(255,255,255,0.05)', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-color)', fontWeight: '600' }}>
+            💬 Match Chat
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {chatLoading ? (
+              <div style={{ color: 'var(--text-muted)', textAlign: 'center' }}>Cargando chat...</div>
+            ) : chatMsgs.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', textAlign: 'center', margin: 'auto' }}>No hay mensajes aún. ¡Saluda a tus oponentes!</div>
+            ) : (
+              chatMsgs.map(msg => (
+                <div key={msg.id} style={{ 
+                  background: msg.user_id === currentUser.id ? 'rgba(139,92,246,0.2)' : 'rgba(255,255,255,0.05)',
+                  alignSelf: msg.user_id === currentUser.id ? 'flex-end' : 'flex-start',
+                  padding: '0.5rem 0.75rem', 
+                  borderRadius: '8px', 
+                  maxWidth: '80%' 
+                }}>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
+                    {msg.username} • {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                  </div>
+                  <div style={{ color: '#fff', fontSize: '0.9rem' }}>{msg.message}</div>
+                </div>
+              ))
+            )}
+          </div>
+          <form onSubmit={handleSendChat} style={{ display: 'flex', padding: '0.75rem', background: 'rgba(255,255,255,0.02)', borderTop: '1px solid var(--border-color)' }}>
+            <input 
+              type="text" 
+              value={newMsg} 
+              onChange={e => setNewMsg(e.target.value)} 
+              placeholder="Escribe un mensaje..."
+              style={{ flex: 1, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', borderRadius: '4px', padding: '0.5rem 0.75rem', color: '#fff' }}
+            />
+            <button type="submit" className="btn-primary" style={{ padding: '0.5rem 1rem', marginLeft: '0.5rem' }}>Enviar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // BRACKET VISUALIZER
 // ============================================================
-function BracketVisualizer({ matches, tournamentId, token, currentUser, organizer, onWinnerDeclared }) {
+function BracketVisualizer({ matches, tournamentId, token, currentUser, organizer, onWinnerDeclared, onMatchClick }) {
   const [declaringMatch, setDeclaringMatch] = useState(null);
 
   if (!matches || matches.length === 0) return null;
@@ -592,7 +773,7 @@ function BracketVisualizer({ matches, tournamentId, token, currentUser, organize
           <div className="bracket-round-title">{getRoundName(roundNum, roundKeys.length)}</div>
           <div className="bracket-matches">
             {rounds[roundNum].map(match => (
-              <div key={match.id} className={`bracket-match ${match.status}`}>
+              <div key={match.id} className={`bracket-match ${match.status}`} onClick={() => onMatchClick && onMatchClick(match)} style={{ cursor: 'pointer' }}>
                 <div className={`bracket-team ${match.winner_team_name === match.team1_name ? 'winner' : ''} ${!match.team1_name ? 'bye' : ''}`}>
                   <span>{match.team1_name || 'TBD'}</span>
                   {isOrganizer(organizer, currentUser) && match.status === 'PENDIENTE' && match.team1_name && (
@@ -640,6 +821,7 @@ function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack,
   const [localMatches, setLocalMatches] = useState(matches || []);
   const [showManageMenu, setShowManageMenu] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState(null);
   const manageRef = useRef(null);
 
   // Close manage menu on outside click
@@ -946,6 +1128,7 @@ function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack,
                   currentUser={currentUser}
                   organizer={tourney.organizer_username}
                   onWinnerDeclared={refreshMatches}
+                  onMatchClick={setSelectedMatch}
                 />
               )}
             </div>
