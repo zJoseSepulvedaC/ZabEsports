@@ -596,4 +596,108 @@ router.post('/:id/generate-match', authMiddleware, async (req: AuthRequest, res:
   }
 });
 
+// ============================================================
+// POST /api/tournaments/:t_id/matches/:m_id/checkin — Check In
+// ============================================================
+router.post('/:t_id/matches/:m_id/checkin', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { t_id, m_id } = req.params;
+  try {
+    const matchRes = await query('SELECT * FROM tournament_matches WHERE id = $1 AND tournament_id = $2', [m_id, t_id]);
+    if (matchRes.rows.length === 0) { res.status(404).json({ error: 'Partida no encontrada.' }); return; }
+    const match = matchRes.rows[0];
+
+    // Check if user is in team1 or team2
+    const userTeams = await query(`
+      SELECT team_id FROM team_members WHERE user_id = $1 AND team_id IN ($2, $3)
+    `, [req.user!.id, match.team1_id, match.team2_id]);
+
+    if (userTeams.rows.length === 0) {
+      res.status(403).json({ error: 'No perteneces a ninguno de los equipos de esta partida.' }); return;
+    }
+
+    const userTeamId = userTeams.rows[0].team_id;
+    const isTeam1 = userTeamId === match.team1_id;
+
+    if (isTeam1) {
+      await query('UPDATE tournament_matches SET team1_checkin = TRUE WHERE id = $1', [m_id]);
+      match.team1_checkin = true;
+    } else {
+      await query('UPDATE tournament_matches SET team2_checkin = TRUE WHERE id = $1', [m_id]);
+      match.team2_checkin = true;
+    }
+
+    // Si ambos hicieron check-in y aún no hay código de torneo, generarlo
+    let newCode = match.tournament_code;
+    if (match.team1_checkin && match.team2_checkin && !match.tournament_code) {
+      const tRes = await query('SELECT riot_tournament_id, min_players_per_team FROM tournaments WHERE id = $1', [t_id]);
+      const tourney = tRes.rows[0];
+      if (tourney && tourney.riot_tournament_id) {
+        try {
+          const { generateTournamentCodes } = await import('../services/riotTournamentService');
+          const codes = await generateTournamentCodes({
+            tournamentId: tourney.riot_tournament_id,
+            teamSize: tourney.min_players_per_team || 5,
+            mapType: 'SUMMONERS_RIFT',
+            pickType: 'TOURNAMENT_DRAFT',
+            spectatorType: 'ALL'
+          }, 1);
+          if (codes && codes.length > 0) {
+            newCode = codes[0];
+            await query('UPDATE tournament_matches SET tournament_code = $1 WHERE id = $2', [newCode, m_id]);
+          }
+        } catch (e) {
+          console.error('Error generando código de Riot tras check-in completo:', e);
+        }
+      }
+    }
+
+    res.json({ message: 'Check-in exitoso.', tournament_code: newCode });
+  } catch (err) {
+    console.error('Error en check-in:', err);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
+// ============================================================
+// GET /api/tournaments/:t_id/matches/:m_id/chat — Get Match Chat
+// ============================================================
+router.get('/:t_id/matches/:m_id/chat', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { m_id } = req.params;
+  try {
+    const messages = await query(`
+      SELECT mc.id, mc.message, mc.created_at, u.username, u.id AS user_id
+      FROM match_chats mc
+      JOIN users u ON u.id = mc.user_id
+      WHERE mc.match_id = $1
+      ORDER BY mc.created_at ASC
+    `, [m_id]);
+    res.json(messages.rows);
+  } catch (err) {
+    console.error('Error obteniendo chat:', err);
+    res.status(500).json({ error: 'Error interno.' });
+  }
+});
+
+// ============================================================
+// POST /api/tournaments/:t_id/matches/:m_id/chat — Post Match Chat
+// ============================================================
+router.post('/:t_id/matches/:m_id/chat', authMiddleware, async (req: AuthRequest, res: Response): Promise<void> => {
+  const { m_id } = req.params;
+  const { message } = req.body;
+  if (!message || message.trim() === '') { res.status(400).json({ error: 'Mensaje vacío.' }); return; }
+
+  try {
+    const inserted = await query(`
+      INSERT INTO match_chats (match_id, user_id, message)
+      VALUES ($1, $2, $3)
+      RETURNING id, message, created_at
+    `, [m_id, req.user!.id, message]);
+    
+    res.status(201).json(inserted.rows[0]);
+  } catch (err) {
+    console.error('Error enviando mensaje de chat:', err);
+    res.status(500).json({ error: 'Error interno.' });
+  }
+});
+
 export default router;

@@ -12,6 +12,7 @@ import playersRouter     from './routes/players';
 import teamsRouter       from './routes/teams';
 import usersRouter       from './routes/users';
 import reportsRouter     from './routes/reports';
+import './services/cronService'; // Start cron jobs
 
 dotenv.config();
 
