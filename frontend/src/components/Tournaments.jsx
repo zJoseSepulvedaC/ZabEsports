@@ -738,12 +738,16 @@ function BracketVisualizer({ matches, tournamentId, token, currentUser, organize
     rounds[m.round_num].push(m);
   });
   const roundKeys = Object.keys(rounds).map(Number).sort((a, b) => a - b);
+  
+  const round1Matches = (rounds[1] || []).length;
+  const computedTotalRounds = round1Matches > 0 ? Math.max(roundKeys.length, Math.ceil(Math.log2(round1Matches * 2))) : roundKeys.length;
 
   const getRoundName = (roundNum, totalRounds) => {
     const diff = totalRounds - roundNum;
     if (diff === 0) return 'FINAL';
     if (diff === 1) return 'SEMIFINAL';
     if (diff === 2) return 'CUARTOS DE FINAL';
+    if (diff === 3) return 'OCTAVOS DE FINAL';
     return `RONDA ${roundNum}`;
   };
 
@@ -770,7 +774,7 @@ function BracketVisualizer({ matches, tournamentId, token, currentUser, organize
     <div className="bracket-container">
       {roundKeys.map(roundNum => (
         <div key={roundNum} className="bracket-round">
-          <div className="bracket-round-title">{getRoundName(roundNum, roundKeys.length)}</div>
+          <div className="bracket-round-title">{getRoundName(roundNum, computedTotalRounds)}</div>
           <div className="bracket-matches">
             {rounds[roundNum].map(match => (
               <div key={match.id} className={`bracket-match ${match.status}`} onClick={() => onMatchClick && onMatchClick(match)} style={{ cursor: 'pointer' }}>

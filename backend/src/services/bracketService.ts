@@ -1,6 +1,6 @@
 import pool from '../db/pool';
 import crypto from 'crypto';
-import { generateTournamentCodes } from './riotTournamentService';
+import { generateTournamentCodes, registerProvider, registerTournament } from './riotTournamentService';
 
 /** Builds the bracket structure for an elimination tournament */
 export function buildEliminationBracket(teams: Array<{id: string; name: string}>): Array<{ round: number; matchNum: number; team1: {id: string; name: string} | null; team2: {id: string; name: string} | null }> {
@@ -66,16 +66,36 @@ export async function generateBracketsForTournament(tournamentId: string) {
 
   const checkinDeadline = new Date(Date.now() + 15 * 60000);
 
+  let riotCodes: string[] = [];
+  try {
+    const providerId = await registerProvider('https://polite-mud-0a1c8430f.7.azurestaticapps.net/api/riot/callback', 'LAS');
+    const riotTourneyId = await registerTournament(providerId, tourney.title || 'ZabEsports Tournament');
+    
+    const realMatchesCount = matchRows.filter(m => m.team2).length;
+    if (realMatchesCount > 0) {
+      riotCodes = await generateTournamentCodes({
+        tournamentId: riotTourneyId,
+        teamSize: 5,
+        mapType: 'SUMMONERS_RIFT',
+        pickType: 'TOURNAMENT_DRAFT',
+        spectatorType: 'ALL'
+      }, realMatchesCount);
+    }
+  } catch (err) {
+    console.error('Error generating Riot codes, falling back to UUIDs:', err);
+  }
+
   const insertedMatches = [];
   for (const m of matchRows) {
     const isBye = !m.team2;
     const status = isBye ? 'BYE' : 'PENDIENTE';
+    const tourneyCode = isBye ? crypto.randomUUID() : (riotCodes.pop() || crypto.randomUUID());
     const matchResult = await pool.query(`
       INSERT INTO tournament_matches
         (tournament_id, team1_id, team1_name, team2_id, team2_name, status, round_num, match_num, checkin_deadline, tournament_code)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
-    `, [tournamentId, m.team1?.id || null, m.team1?.name || '', m.team2?.id || null, m.team2?.name || '', status, m.round, m.matchNum, checkinDeadline, crypto.randomUUID()]);
+    `, [tournamentId, m.team1?.id || null, m.team1?.name || '', m.team2?.id || null, m.team2?.name || '', status, m.round, m.matchNum, checkinDeadline, tourneyCode]);
     insertedMatches.push(matchResult.rows[0]);
   }
 
