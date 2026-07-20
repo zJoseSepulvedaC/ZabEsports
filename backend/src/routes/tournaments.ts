@@ -729,7 +729,7 @@ router.post('/debug/seed-test', async (req: Request, res: Response): Promise<voi
         INSERT INTO teams (name, captain_id)
         VALUES ($1, $2)
         RETURNING id
-      `, [`Riot Test Team ${i}`, cId]);
+      `, [`Test Team ${i} - ${Date.now()}`, cId]);
       const teamId = teamRes.rows[0].id;
 
       await query(`INSERT INTO team_members (team_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [teamId, cId]);
