@@ -699,4 +699,44 @@ router.post('/:t_id/matches/:m_id/chat', authMiddleware, async (req: AuthRequest
   }
 });
 
+// ============================================================
+// GET /api/tournaments/debug/seed-test
+// ============================================================
+router.get('/debug/seed-test', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const userRes = await query(`SELECT id FROM users WHERE username = 'Zabat' LIMIT 1`);
+    if (userRes.rows.length === 0) { res.status(404).send('Zabat no encontrado'); return; }
+    const organizerId = userRes.rows[0].id;
+
+    const tRes = await query(`
+      INSERT INTO tournaments (title, game, format, region, max_teams, start_date, organizer_id, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id
+    `, ['Test Riot API Brackets', 'League of Legends', 'Pre-Made Teams', 'Latin America South', 16, new Date(), organizerId, 'DRAFT']);
+    const tId = tRes.rows[0].id;
+
+    for (let i = 1; i <= 8; i++) {
+      const uRes = await query(`
+        INSERT INTO users (username, email, password_hash, role)
+        VALUES ($1, $2, $3, 'player')
+        ON CONFLICT (email) DO UPDATE SET username = EXCLUDED.username
+        RETURNING id
+      `, [`TestCapitan${i}`, `testcap${i}@test.com`, 'hash']);
+      const cId = uRes.rows[0].id;
+
+      const teamRes = await query(`
+        INSERT INTO teams (name, game, captain_id)
+        VALUES ($1, $2, $3)
+        RETURNING id
+      `, [`Riot Test Team ${i}`, 'League of Legends', cId]);
+      const teamId = teamRes.rows[0].id;
+
+      await query(`INSERT INTO tournament_registrations (tournament_id, team_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [tId, teamId]);
+    }
+    res.send(`<script>window.location.href="https://polite-mud-0a1c8430f.7.azurestaticapps.net/torneos/${tId}";</script>`);
+  } catch (err: any) {
+    res.status(500).send(err.message);
+  }
+});
+
 export default router;
