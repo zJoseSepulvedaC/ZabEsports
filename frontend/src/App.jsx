@@ -1289,8 +1289,10 @@ function App() {
             token={token}
             onLeaveTournament={handleLeaveTournament}
             onDeleteTournament={handleDeleteTournament}
+            communities={communities}
           />
         )}
+
 
         {activeTab === 'profile' && (
           <Profile 
