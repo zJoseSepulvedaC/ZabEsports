@@ -66,9 +66,8 @@ export async function generateBracketsForTournament(tournamentId: string) {
 
   const checkinDeadline = new Date(Date.now() + 15 * 60000);
 
-  let riotCodes: string[] = [];
-  try {
-    const providerId = await registerProvider('https://polite-mud-0a1c8430f.7.azurestaticapps.net/api/riot/callback', 'LAS');
+    let riotCodes: string[] = [];
+  const providerId = await registerProvider('https://polite-mud-0a1c8430f.7.azurestaticapps.net/api/riot/callback', 'LAS');
     const riotTourneyId = await registerTournament(providerId, tourney.title || 'ZabEsports Tournament');
     
     const realMatchesCount = matchRows.filter(m => m.team2).length;
@@ -81,9 +80,6 @@ export async function generateBracketsForTournament(tournamentId: string) {
         spectatorType: 'ALL'
       }, realMatchesCount);
     }
-  } catch (err) {
-    console.error('Error generating Riot codes, falling back to UUIDs:', err);
-  }
 
   const insertedMatches = [];
   for (const m of matchRows) {
