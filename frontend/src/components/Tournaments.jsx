@@ -822,6 +822,7 @@ function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack,
   const [showManageMenu, setShowManageMenu] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const manageRef = useRef(null);
 
   // Close manage menu on outside click
@@ -862,7 +863,7 @@ function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack,
   useEffect(() => { setLocalMatches(matches || []); }, [matches]);
 
   const handleGenerateBrackets = async () => {
-    if (!confirm('¿Cerrar inscripciones y generar los brackets automáticamente?')) return;
+    setShowConfirmModal(false);
     setGeneratingBrackets(true);
     try {
       const res = await fetch(`${API_URL}/api/tournaments/${tourney.id}/generate-brackets`, {
@@ -1084,7 +1085,7 @@ function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack,
                   </p>
                   <button
                     className="btn-primary"
-                    onClick={handleGenerateBrackets}
+                    onClick={() => setShowConfirmModal(true)}
                     disabled={generatingBrackets}
                     style={{ background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-pink))' }}
                   >

@@ -76,6 +76,8 @@ Promise.all([
   runMigration(`CREATE INDEX IF NOT EXISTS idx_matches_tournament ON tournament_matches(tournament_id)`, 'idx_matches_tournament'),
   runMigration(`CREATE INDEX IF NOT EXISTS idx_matches_round ON tournament_matches(tournament_id, round_num)`, 'idx_matches_round'),
   // -- tournament_matches table improvements
+  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS round_num INT DEFAULT 1`, 'round_num'),
+  runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS match_num INT DEFAULT 1`, 'match_num'),
   runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team1_id UUID REFERENCES teams(id) ON DELETE CASCADE`, 'team1_id'),
   runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team2_id UUID REFERENCES teams(id) ON DELETE CASCADE`, 'team2_id'),
   runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team1_checkin BOOLEAN DEFAULT FALSE`, 'team1_checkin'),
