@@ -84,6 +84,7 @@ const migrations = [
   () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS team2_checkin BOOLEAN DEFAULT FALSE`, 'team2_checkin'),
   () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS checkin_deadline TIMESTAMP WITH TIME ZONE`, 'checkin_deadline'),
   () => runMigration(`ALTER TABLE tournament_matches ADD COLUMN IF NOT EXISTS winner_team_id UUID REFERENCES teams(id) ON DELETE SET NULL`, 'winner_team_id'),
+  () => runMigration(`ALTER TABLE tournament_matches ALTER COLUMN tournament_code DROP NOT NULL`, 'drop_tournament_code_notnull'),
   // -- Unique registration
   () => runMigration(`ALTER TABLE tournament_registrations ADD CONSTRAINT uq_tournament_team UNIQUE (tournament_id, team_id)`, 'uq_tournament_team').catch(() => console.log('uq_tournament_team ya existe o ignorado')),
   // -- Match Chats
