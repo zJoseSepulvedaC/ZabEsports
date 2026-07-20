@@ -713,7 +713,7 @@ router.post('/debug/seed-test', async (req: Request, res: Response): Promise<voi
       INSERT INTO tournaments (name, game, game_format, tournament_format, game_region, max_teams, start_date, organizer_id, status, slug)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING id
-    `, ['Test Riot API Brackets ' + Date.now(), 'League of Legends', 'Pre-Made Teams', 'elimination', 'Latin America South', 16, new Date(), organizerId, 'DRAFT', 'test-riot-' + Date.now()]);
+    `, ['Test Riot API Brackets ' + Date.now(), 'League of Legends', 'Pre-Made Teams', 'elimination', 'Latin America South', 16, new Date(), organizerId, 'BORRADOR', 'test-riot-' + Date.now()]);
     const tId = tRes.rows[0].id;
 
     for (let i = 1; i <= 8; i++) {
