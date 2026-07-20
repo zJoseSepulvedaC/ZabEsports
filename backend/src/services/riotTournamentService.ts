@@ -1,4 +1,3 @@
-import axios from 'axios';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -23,14 +22,18 @@ const getHeaders = () => {
  */
 export const registerProvider = async (callbackUrl: string, region: string = 'LAS'): Promise<number> => {
     try {
-        const response = await axios.post(
-            `${TOURNAMENT_STUB_URL}/providers`,
-            { region, url: callbackUrl },
-            { headers: getHeaders() }
-        );
-        return response.data; // Devuelve un int (providerId)
+        const response = await fetch(`${TOURNAMENT_STUB_URL}/providers`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ region, url: callbackUrl })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(`Error de Riot: ${JSON.stringify(data)}`);
+        }
+        return data; // Devuelve un int (providerId)
     } catch (error: any) {
-        console.error('Error registrando provider en Riot:', error.response?.data || error.message);
+        console.error('Error registrando provider en Riot:', error.message);
         throw new Error('No se pudo registrar el proveedor de torneos.');
     }
 };
@@ -41,14 +44,18 @@ export const registerProvider = async (callbackUrl: string, region: string = 'LA
  */
 export const registerTournament = async (providerId: number, name: string): Promise<number> => {
     try {
-        const response = await axios.post(
-            `${TOURNAMENT_STUB_URL}/tournaments`,
-            { providerId, name },
-            { headers: getHeaders() }
-        );
-        return response.data; // Devuelve un int (tournamentId)
+        const response = await fetch(`${TOURNAMENT_STUB_URL}/tournaments`, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify({ providerId, name })
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(`Error de Riot: ${JSON.stringify(data)}`);
+        }
+        return data; // Devuelve un int (tournamentId)
     } catch (error: any) {
-        console.error('Error registrando torneo en Riot:', error.response?.data || error.message);
+        console.error('Error registrando torneo en Riot:', error.message);
         throw new Error('No se pudo registrar el torneo en Riot.');
     }
 };
@@ -76,10 +83,18 @@ export const generateTournamentCodes = async (params: GenerateCodeParams, count:
             allowedParticipants: params.allowedParticipants || []
         };
         
-        const response = await axios.post(url, body, { headers: getHeaders() });
-        return response.data; // Devuelve un array de strings (los códigos)
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: getHeaders(),
+            body: JSON.stringify(body)
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(`Error de Riot: ${JSON.stringify(data)}`);
+        }
+        return data; // Devuelve un array de strings (los códigos)
     } catch (error: any) {
-        console.error('Error generando códigos de torneo:', error.response?.data || error.message);
+        console.error('Error generando códigos de torneo:', error.message);
         throw new Error('No se pudieron generar los códigos de torneo.');
     }
 };
