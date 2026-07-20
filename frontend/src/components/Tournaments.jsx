@@ -891,6 +891,34 @@ function TournamentDetail({ tourney, token, currentUser, teams, matches, onBack,
 
   return (
     <div className="tournament-detail">
+      {showConfirmModal && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <h3 style={{ color: '#fff', marginBottom: '1rem' }}>Confirmar Generación</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              ¿Estás seguro de que deseas cerrar las inscripciones y generar los brackets? Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button className="btn-secondary" onClick={() => setShowConfirmModal(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={handleGenerateBrackets} style={{ background: 'var(--accent-purple)' }}>
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedMatch && (
+        <MatchDetailsModal
+          match={selectedMatch}
+          tournamentId={tourney.id}
+          token={token}
+          currentUser={currentUser}
+          onClose={() => setSelectedMatch(null)}
+          onMatchUpdated={refreshMatches}
+        />
+      )}
+
       {/* Header */}
       <div className="td-header">
         {tourney.header_banner_url && (
