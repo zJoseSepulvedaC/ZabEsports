@@ -444,16 +444,15 @@ router.get('/:id/teams', async (req: Request, res: Response): Promise<void> => {
 router.get('/:id/matches', async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await query(`
-      SELECT id, team1_name, team2_name, tournament_code, status,
-             round_num, match_num, next_match_id, winner_team_name, created_at
+      SELECT *
       FROM tournament_matches
       WHERE tournament_id = $1
       ORDER BY round_num ASC, match_num ASC
     `, [req.params.id]);
     res.json(result.rows);
-  } catch (err) {
+  } catch (err: any) {
     console.error('Error al obtener partidas:', err);
-    res.status(500).json({ error: 'Error interno del servidor.' });
+    res.status(500).json({ error: 'Error interno del servidor.', details: err.message });
   }
 });
 
