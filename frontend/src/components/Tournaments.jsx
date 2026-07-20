@@ -37,7 +37,7 @@ function TournamentWizard({ token, communities, currentUser, onClose, onCreated 
 
   const [form, setForm] = useState({
     // BASICS
-    game: '', name: '', start_date: '', start_time: '7:00 PM', community_id: '',
+    game: '', name: '', start_date: '', start_time: '19:00', community_id: '',
     // INFO
     contact_method: '', contact_details: '', critical_rules: '', rules: '', prizes: '', schedule: '',
     // SETTINGS

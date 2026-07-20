@@ -16,63 +16,66 @@ import reportsRouter     from './routes/reports';
 dotenv.config();
 
 // ============================================================
-// MIGRACIONES AUTOMÁTICAS — Se ejecutan al arrancar el servidor
+// MIGRACIONES AUTOMÁTICAS — Cada una corre de forma independiente
 // ============================================================
-pool.query(`
-    -- Columnas básicas de Riot (migración anterior)
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS riot_tournament_id INT;
+const runMigration = (sql: string, label: string) =>
+  pool.query(sql)
+    .then(() => console.log(`✅ Migración OK: ${label}`))
+    .catch((e) => console.warn(`⚠️ Migración omitida (${label}): ${e.message}`));
 
-    -- Columnas del Wizard (Pestaña BASICS)
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game VARCHAR(100);
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS slug VARCHAR(200) UNIQUE;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS header_banner_url TEXT;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS start_time VARCHAR(20);
-
-    -- Columnas del Wizard (Pestaña INFO)
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS contact_method VARCHAR(100);
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS contact_details TEXT;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS critical_rules TEXT;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS rules TEXT;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS prizes TEXT;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS schedule TEXT;
-
-    -- Columnas del Wizard (Pestaña SETTINGS)
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_region VARCHAR(100) DEFAULT 'Latin America South';
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_map VARCHAR(100) DEFAULT 'Summoners Rift';
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_format VARCHAR(100) DEFAULT 'Tournament Draft';
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS tournament_format VARCHAR(100) DEFAULT 'Pre-Made Teams';
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS min_players_per_team INT DEFAULT 5;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS check_in_enabled BOOLEAN DEFAULT FALSE;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS check_in_start_time INT DEFAULT 60;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS match_score_reporting VARCHAR(50) DEFAULT 'Admins & Players';
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS require_screenshots BOOLEAN DEFAULT FALSE;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS max_team_size INT;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS registration_limit INT;
-
-    -- Columnas del Wizard (Pestaña BRACKETS & PUBLISH)
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS bracket_type VARCHAR(50) DEFAULT 'elimination';
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT FALSE;
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) DEFAULT 'public';
-    ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS join_code VARCHAR(20);
-
-    -- Tabla de partidas con soporte de brackets por rondas
+Promise.all([
+  // -- BASICS columns
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS riot_tournament_id INT`, 'riot_tournament_id'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game VARCHAR(100)`, 'game'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS slug VARCHAR(200)`, 'slug'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS header_banner_url TEXT`, 'header_banner_url'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS start_time VARCHAR(20)`, 'start_time'),
+  // -- INFO columns
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS contact_method VARCHAR(100)`, 'contact_method'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS contact_details TEXT`, 'contact_details'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS critical_rules TEXT`, 'critical_rules'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS rules TEXT`, 'rules'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS prizes TEXT`, 'prizes'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS schedule TEXT`, 'schedule'),
+  // -- SETTINGS columns
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_region VARCHAR(100) DEFAULT 'Latin America South'`, 'game_region'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_map VARCHAR(100) DEFAULT 'Summoners Rift'`, 'game_map'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS game_format VARCHAR(100) DEFAULT 'Tournament Draft'`, 'game_format'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS tournament_format VARCHAR(100) DEFAULT 'Pre-Made Teams'`, 'tournament_format'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS min_players_per_team INT DEFAULT 5`, 'min_players_per_team'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS check_in_enabled BOOLEAN DEFAULT FALSE`, 'check_in_enabled'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS check_in_start_time INT DEFAULT 60`, 'check_in_start_time'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS match_score_reporting VARCHAR(50) DEFAULT 'Admins & Players'`, 'match_score_reporting'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS require_screenshots BOOLEAN DEFAULT FALSE`, 'require_screenshots'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS max_team_size INT`, 'max_team_size'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS registration_limit INT`, 'registration_limit'),
+  // -- BRACKETS & PUBLISH columns
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS bracket_type VARCHAR(50) DEFAULT 'elimination'`, 'bracket_type'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT FALSE`, 'is_published'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS visibility VARCHAR(20) DEFAULT 'public'`, 'visibility'),
+  runMigration(`ALTER TABLE tournaments ADD COLUMN IF NOT EXISTS join_code VARCHAR(20)`, 'join_code'),
+  // -- Unique index on slug (separate from ADD COLUMN so it's idempotent)
+  runMigration(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tournaments_slug ON tournaments(slug) WHERE slug IS NOT NULL`, 'slug_unique_index'),
+  // -- tournament_matches table
+  runMigration(`
     CREATE TABLE IF NOT EXISTS tournament_matches (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
-        team1_name VARCHAR(100),
-        team2_name VARCHAR(100),
-        tournament_code VARCHAR(255),
-        status VARCHAR(20) DEFAULT 'PENDIENTE',
-        round_num INT DEFAULT 1,
-        match_num INT DEFAULT 1,
-        next_match_id UUID REFERENCES tournament_matches(id) ON DELETE SET NULL,
-        winner_team_name VARCHAR(100),
-        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-    );
-    CREATE INDEX IF NOT EXISTS idx_matches_tournament ON tournament_matches(tournament_id);
-    CREATE INDEX IF NOT EXISTS idx_matches_round ON tournament_matches(tournament_id, round_num);
-`).then(() => console.log('✅ Migraciones automáticas completadas.'))
-  .catch((e) => console.error('❌ Error en migración automática:', e));
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+      team1_name VARCHAR(100),
+      team2_name VARCHAR(100),
+      tournament_code VARCHAR(255),
+      status VARCHAR(20) DEFAULT 'PENDIENTE',
+      round_num INT DEFAULT 1,
+      match_num INT DEFAULT 1,
+      next_match_id UUID REFERENCES tournament_matches(id) ON DELETE SET NULL,
+      winner_team_name VARCHAR(100),
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    )
+  `, 'tournament_matches table'),
+  runMigration(`CREATE INDEX IF NOT EXISTS idx_matches_tournament ON tournament_matches(tournament_id)`, 'idx_matches_tournament'),
+  runMigration(`CREATE INDEX IF NOT EXISTS idx_matches_round ON tournament_matches(tournament_id, round_num)`, 'idx_matches_round'),
+]).then(() => console.log('✅ Todas las migraciones completadas.'));
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
