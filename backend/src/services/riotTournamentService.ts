@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const RIOT_API_KEY = process.env.llave;
-const TOURNAMENT_STUB_URL = 'https://americas.api.riotgames.com/lol/tournament-stub/v5';
+const TOURNAMENT_URL = 'https://americas.api.riotgames.com/lol/tournament/v5';
 
 // Headers necesarios para las peticiones a Riot
 const getHeaders = () => {
@@ -22,7 +22,7 @@ const getHeaders = () => {
  */
 export const registerProvider = async (callbackUrl: string, region: string = 'LAS'): Promise<number> => {
     try {
-        const response = await fetch(`${TOURNAMENT_STUB_URL}/providers`, {
+        const response = await fetch(`${TOURNAMENT_URL}/providers`, {
             method: 'POST',
             headers: getHeaders(),
             body: JSON.stringify({ region, url: callbackUrl })
@@ -44,7 +44,7 @@ export const registerProvider = async (callbackUrl: string, region: string = 'LA
  */
 export const registerTournament = async (providerId: number, name: string): Promise<number> => {
     try {
-        const response = await fetch(`${TOURNAMENT_STUB_URL}/tournaments`, {
+        const response = await fetch(`${TOURNAMENT_URL}/tournaments`, {
             method: 'POST',
             headers: getHeaders(),
             body: JSON.stringify({ providerId, name })
@@ -74,7 +74,7 @@ interface GenerateCodeParams {
 
 export const generateTournamentCodes = async (params: GenerateCodeParams, count: number = 1): Promise<string[]> => {
     try {
-        const url = `${TOURNAMENT_STUB_URL}/codes?tournamentId=${params.tournamentId}&count=${count}`;
+        const url = `${TOURNAMENT_URL}/codes?tournamentId=${params.tournamentId}&count=${count}`;
         const body = {
             teamSize: params.teamSize,
             mapType: params.mapType,
