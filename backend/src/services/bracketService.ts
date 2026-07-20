@@ -1,4 +1,5 @@
 import pool from '../db/pool';
+import crypto from 'crypto';
 import { generateTournamentCodes } from './riotTournamentService';
 
 /** Builds the bracket structure for an elimination tournament */
@@ -74,7 +75,7 @@ export async function generateBracketsForTournament(tournamentId: string) {
         (tournament_id, team1_id, team1_name, team2_id, team2_name, status, round_num, match_num, checkin_deadline, tournament_code)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
-    `, [tournamentId, m.team1?.id || null, m.team1?.name || null, m.team2?.id || null, m.team2?.name || null, status, m.round, m.matchNum, checkinDeadline, '']);
+    `, [tournamentId, m.team1?.id || null, m.team1?.name || null, m.team2?.id || null, m.team2?.name || null, status, m.round, m.matchNum, checkinDeadline, crypto.randomUUID()]);
     insertedMatches.push(matchResult.rows[0]);
   }
 
